@@ -81,9 +81,13 @@ body::after {
 @keyframes dots-breathe { 0%, 100% { opacity: .16; } 50% { opacity: .26; } }
 @media (max-width: 700px) { .corner-dots { width: 230px; height: 210px; } .corner-dots.tl { display: none; } }
 /* Scroll-reveal: content settles in as it arrives. */
+/* Fail-open: if the observer never fires (hydration timing, replaced
+   nodes), content still settles in on its own after a beat. */
 .reveal { opacity: 0; transform: translateY(16px);
+  animation: reveal-failopen .5s ease 1.1s forwards;
   transition: opacity .65s var(--ease), transform .65s var(--ease); }
-.reveal.in { opacity: 1; transform: none; }
+.reveal.in { opacity: 1; transform: none; animation: none; }
+@keyframes reveal-failopen { to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .topline, .corner-dots { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
