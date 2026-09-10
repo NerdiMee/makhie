@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookings — Makhie</title>
+<meta name="description" content="A booking desk for salons, barbers, tattoo artists, carwashes, painters, handymen and landscapers. Clients pick a day and hour on your calendar; you confirm personally.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .linkout { margin-top: 14px; display: none; }
+  .linkout .grid2 { gap: 14px; align-items: center; }
+  .linkout img { width: 150px; height: 150px; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: #fff; }
+  .linkout input { font-size: 12.5px; color: var(--accent-ink); }
+  /* calendar */
+  .cal { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 10px; background: #fff; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-head b { font-size: 14px; }
+  .cal-head button { border: 1px solid var(--line); background: #fff; border-radius: 8px; width: 30px; height: 30px;
+    cursor: pointer; color: var(--ink); font-size: 14px; }
+  .cal-head button:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-grid .dow { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: var(--mute); text-align: center; padding: 4px 0; }
+  .cal-grid button { aspect-ratio: 1; border: 1px solid transparent; background: none; border-radius: 9px;
+    font: 600 13px inherit; font-family: inherit; color: var(--ink); cursor: pointer; transition: background .12s, border-color .12s; }
+  .cal-grid button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+  .cal-grid button:disabled { color: #c9d2e2; cursor: default; }
+  .cal-grid button.sel { background: var(--accent); color: #fff; }
+  .cal-grid button.today { border-color: var(--line); }
+  .hours { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 7px; margin-top: 12px; }
+  .hours button { border: 1.5px solid var(--line); background: #fff; border-radius: 9px; padding: 9px 0;
+    font: 600 12.5px inherit; font-family: inherit; color: var(--ink); cursor: pointer; transition: border-color .12s, background .12s; }
+  .hours button:hover:not(:disabled) { border-color: var(--accent); }
+  .hours button.sel { background: var(--accent); border-color: var(--accent-ink); color: #fff; }
+  .hours button:disabled { color: #c9d2e2; text-decoration: line-through; cursor: default; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 6px; }
+  .seg button { padding: 9px 18px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  /* owner's book */
+  .bk { border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); padding: 13px 16px; margin-top: 10px; }
+  .bk-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .bk-top b { font-size: 14px; }
+  .chip { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; border-radius: 6px; padding: 2.5px 9px; }
+  .chip.pending { color: var(--warn); background: var(--warn-soft); }
+  .chip.confirmed { color: var(--ok); background: var(--ok-soft); }
+  .chip.declined { color: #b3402a; background: #fdf0ec; }
+  .bk .meta { font-size: 12px; color: var(--mute); margin-top: 3px; }
+  .bk .notes { font-size: 12.5px; background: var(--accent-soft); border-radius: 8px; padding: 7px 11px; margin-top: 7px; }
+  .bk .acts { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+  .bk .acts a, .bk .acts button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 11px;
+    font: 600 12px inherit; font-family: inherit; color: var(--ink); cursor: pointer; text-decoration: none; }
+  .bk .acts .ok { color: var(--ok); border-color: #bfe6d4; }
+  .bk .acts .no { color: #b3402a; }
+  .bk .acts a.wa-mini { display: inline-flex; align-items: center; gap: 5px; background: #25D366; border-color: #1DA851; color: #fff; }
+  .bk .acts a.wa-mini svg { width: 12px; height: 12px; fill: currentColor; }
+  .done-box { display: none; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 10px;
+    padding: 14px 16px; margin-top: 14px; font-size: 13.5px; line-height: 1.6; color: var(--ok); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="cashbook.html">Cashbook</a>
+      <a class="link" href="receipts.html">Receipts</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page" id="title">Bookings</h1>
+    <p class="sub" id="subtitle">Clients pick a day and an hour on your calendar and leave their
+    details. You call or WhatsApp to confirm personally — the app keeps the book straight.</p>
+  </div>
+
+  <!-- ============ OWNER ============ -->
+  <div id="owner-view" style="display:none">
+    <div class="grid2" style="margin-top:26px">
+      <div class="card">
+        <h3>Your booking page</h3>
+        <p class="note" id="owner-note">Set up once — then share your link or QR code. Every
+        booking a client makes lands in your book here. Sign in and the book follows you to any
+        device.</p>
+        <label class="f" for="o-biz">Business name (clients see this)</label>
+        <input class="f" id="o-biz" placeholder="e.g. Fresh Fades Studio">
+        <div class="row">
+          <button class="btn" id="o-make" type="button">Create my booking link</button>
+          <span class="note" id="o-status"></span>
+        </div>
+        <div class="linkout" id="o-out">
+          <div class="grid2">
+            <div>
+              <label class="f">Your booking link</label>
+              <input class="f" id="o-link" readonly>
+              <div class="row">
+                <button class="btn quiet small" id="o-copy" type="button">Copy link</button>
+                <a class="btn wa small" id="o-wa" target="_blank" rel="noopener">Share on WhatsApp</a>
+              </div>
+            </div>
+            <div style="text-align:center">
+              <img id="o-qr" alt="QR code for your booking page">
+              <div class="note">Print it. Stick it on the mirror.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Your book</h3>
+        <p class="note" id="bk-note">Bookings appear here the moment a client makes one. Confirm
+        or decline after you've spoken to them — calling first is the professional touch.</p>
+        <div id="book"><p class="note" style="margin-top:10px">No bookings yet.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CLIENT ============ -->
+  <div id="client-view" style="display:none">
+    <div class="grid2" style="margin-top:26px">
+      <div class="card">
+        <h3 id="c-bizname">Book your spot</h3>
+        <label class="f">Where?</label>
+        <div class="seg" id="place-seg">
+          <button class="on" data-p="shop" type="button" id="p-shop">At the salon</button>
+          <button data-p="house" type="button" id="p-house">House call</button>
+        </div>
+        <label class="f" for="c-service">What are you booking?</label>
+        <select class="f" id="c-service"></select>
+        <label class="f">Pick your day</label>
+        <div class="cal">
+          <div class="cal-head">
+            <button id="cal-prev" type="button" aria-label="Previous month">‹</button>
+            <b id="cal-title"></b>
+            <button id="cal-next" type="button" aria-label="Next month">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+        <label class="f" id="hours-label" style="display:none">Pick your hour</label>
+        <div class="hours" id="hours"></div>
+      </div>
+
+      <div class="card">
+        <h3>Your details</h3>
+        <label class="f" for="c-name">Your name</label>
+        <input class="f" id="c-name" placeholder="So they know who's coming">
+        <label class="f" for="c-phone">Your number (they'll call to confirm)</label>
+        <input class="f" id="c-phone" placeholder="072 000 0000" inputmode="tel">
+        <label class="f" for="c-notes">Special requests</label>
+        <textarea class="f" id="c-notes" rows="3"></textarea>
+        <div class="row">
+          <button class="btn" id="c-book" type="button" disabled>Request this booking</button>
+        </div>
+        <p class="note" id="c-status" style="margin-top:10px">Pick a day and an hour first.</p>
+        <div class="done-box" id="c-done"></div>
+        <p class="disc">Your booking is a request until the owner contacts you personally to
+        confirm. Only your name and number travel — no accounts, no passwords.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — bookings land directly with the business; confirmation always happens person to person.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb;
+
+  /* ---------- six trades, one desk ---------- */
+  var TYPES = {
+    salon: { title: "Salon & Barber Bookings", shop: "At the salon", house: "House call",
+      services: ["Haircut", "Fade", "Beard trim", "Braids", "Wig install", "Relaxer / treatment", "Kids cut", "Colour"],
+      notesPh: "e.g. Picture of the style, skin sensitivity, bring the kids…" },
+    tattoo: { title: "Tattoo Bookings", shop: "At the studio", house: "House call",
+      services: ["Consultation first", "Small piece (under 5cm)", "Medium piece", "Large piece / sleeve session", "Touch-up", "Cover-up"],
+      notesPh: "e.g. Describe the piece, placement, reference pics at the consult…" },
+    carwash: { title: "Carwash Bookings", shop: "At the wash bay", house: "We come to you",
+      services: ["Wash & Go", "Wash & Vacuum", "Full Valet", "Polish & Wax", "Engine Wash", "Interior Deep Clean"],
+      notesPh: "e.g. Sedan or bakkie, pet hair, extra-dirty mats, gate code…" },
+    painter: { title: "House Painter Bookings", shop: "Come quote first", house: "Book the job",
+      services: ["Interior painting", "Exterior painting", "Roof painting", "Waterproofing", "Ceilings & cornices", "Touch-ups"],
+      notesPh: "e.g. Three bedrooms + passage, paint supplied or not, colour ideas…" },
+    handyman: { title: "Handyman Bookings", shop: "Come quote first", house: "Book the job",
+      services: ["Plumbing repair", "Electrical fix", "Door / lock fitting", "Gutter cleaning", "Furniture assembly", "TV mounting", "General piece job"],
+      notesPh: "e.g. What's broken, what's needed, gate code, parking…" },
+    landscape: { title: "Landscaping Bookings", shop: "Come quote first", house: "Book the job",
+      services: ["Garden cleanup", "Lawn care (monthly)", "Tree felling / pruning", "Instant lawn", "Paving", "Irrigation", "Garden design"],
+      notesPh: "e.g. Yard size, before photos on WhatsApp, compost needed…" }
+  };
+  var qs = new URLSearchParams(location.search);
+  var bizType = TYPES[qs.get("type")] ? qs.get("type") : "salon";
+  var T = TYPES[bizType];
+  var bkey = qs.get("b");
+
+  /* ---------- client mode ---------- */
+  function boot() {
+    if (!sb) { $("c-status").textContent = "Booking needs a connection — you appear offline."; return; }
+    sb.from("makhie_bookings").select("client_name").eq("owner_key", bkey).limit(1).then(function () {});
+    // The owner's business name rides in the link so no lookup is needed.
+    var nm = qs.get("n");
+    if (nm) $("c-bizname").textContent = "Book with " + nm;
+    $("p-shop").textContent = T.shop; $("p-house").textContent = T.house;
+    $("c-service").innerHTML = T.services.map(function (s) { return "<option>" + MK.esc(s) + "</option>"; }).join("");
+    $("c-notes").placeholder = T.notesPh;
+    drawCal();
+  }
+
+  var place = "shop", selDate = null, selHour = null;
+  [].forEach.call(document.querySelectorAll("#place-seg button"), function (b) {
+    b.addEventListener("click", function () {
+      place = b.getAttribute("data-p");
+      [].forEach.call(document.querySelectorAll("#place-seg button"), function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+    });
+  });
+
+  /* calendar */
+  var view = new Date(); view.setDate(1);
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  function drawCal() {
+    $("cal-title").textContent = MONTHS[view.getMonth()] + " " + view.getFullYear();
+    var g = $("cal-grid");
+    g.innerHTML = ["S","M","T","W","T","F","S"].map(function (d) { return "<span class='dow'>" + d + "</span>"; }).join("");
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var first = new Date(view);
+    for (var i = 0; i < first.getDay(); i++) g.appendChild(document.createElement("span"));
+    var days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (var d = 1; d <= days; d++) {
+      var dt = new Date(view.getFullYear(), view.getMonth(), d, 12);
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = d;
+      if (iso(dt) === iso(new Date())) b.classList.add("today");
+      if (dt < today) b.disabled = true;
+      if (selDate === iso(dt)) b.classList.add("sel");
+      (function (dt2) {
+        b.addEventListener("click", function () { selDate = iso(dt2); selHour = null; drawCal(); drawHours(); });
+      })(dt);
+      g.appendChild(b);
+    }
+  }
+  $("cal-prev").addEventListener("click", function () { view.setMonth(view.getMonth() - 1); drawCal(); });
+  $("cal-next").addEventListener("click", function () { view.setMonth(view.getMonth() + 1); drawCal(); });
+
+  function drawHours() {
+    $("hours-label").style.display = "block";
+    var h = $("hours");
+    h.innerHTML = "<p class='note'>Checking the day…</p>";
+    sb.from("makhie_bookings").select("at_hour,status").eq("owner_key", bkey).eq("on_date", selDate)
+      .then(function (r) {
+        var taken = {};
+        (r.data || []).forEach(function (x) { if (x.status !== "declined") taken[x.at_hour] = 1; });
+        h.innerHTML = "";
+        for (var hr = 7; hr <= 20; hr++) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = String(hr).padStart(2, "0") + ":00";
+          if (taken[hr]) { b.disabled = true; b.title = "Already booked"; }
+          if (selHour === hr) b.classList.add("sel");
+          (function (hr2) {
+            b.addEventListener("click", function () {
+              selHour = hr2;
+              [].forEach.call(h.children, function (x) { x.classList.remove("sel"); });
+              this.classList.add("sel");
+              check();
+            });
+          })(hr);
+          h.appendChild(b);
+        }
+        check();
+      });
+  }
+  function check() {
+    var ok = selDate && selHour != null && $("c-name").value.trim() && $("c-phone").value.trim();
+    $("c-book").disabled = !ok;
+    $("c-status").textContent = ok
+      ? selDate + " at " + String(selHour).padStart(2, "0") + ":00 — ready to send."
+      : "Pick a day and an hour, and leave your name and number.";
+  }
+  ["c-name", "c-phone"].forEach(function (id) { $(id).addEventListener("input", check); });
+
+  $("c-book").addEventListener("click", function () {
+    var btn = this; btn.disabled = true;
+    $("c-status").textContent = "Sending your request…";
+    sb.from("makhie_bookings").insert({
+      owner_key: bkey, biz_type: bizType,
+      client_name: $("c-name").value.trim(), client_phone: $("c-phone").value.trim(),
+      place: place, service: $("c-service").value,
+      on_date: selDate, at_hour: selHour, notes: $("c-notes").value.trim()
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      $("c-done").innerHTML = "Request sent ✓ — <b>" + MK.esc($("c-service").value) + "</b> on " +
+        MK.esc(selDate) + " at " + String(selHour).padStart(2, "0") + ":00.<br>They'll contact you on " +
+        MK.esc($("c-phone").value) + " to confirm personally.";
+      $("c-done").style.display = "block";
+      $("c-status").textContent = "";
+      drawHours();
+    }).catch(function (e) {
+      btn.disabled = false;
+      $("c-status").textContent = "Couldn't send: " + ((e && e.message) || "try again");
+    });
+  });
+
+  /* ---------- owner mode ---------- */
+  function ownerBoot() {
+    $("owner-view").style.display = "block";
+    $("title").textContent = T.title;
+    var key = null;
+    try { key = localStorage.getItem("mk.book." + bizType); } catch (e) {}
+    try { $("o-biz").value = localStorage.getItem("mk.book.biz." + bizType) || ""; } catch (e) {}
+
+    // Signed in: the link key lives in your account too, so any device serves the same book.
+    MK.onAuth(function (u) {
+      if (u && !u.demo && sb) {
+        sb.from("makhie_documents").select("id,data").eq("kind", "booking_link").then(function (r) {
+          var row = (r.data || []).filter(function (d) { return d.data && d.data.type === bizType; })[0];
+          if (row && row.data.key) {
+            key = row.data.key;
+            try { localStorage.setItem("mk.book." + bizType, key); } catch (e) {}
+            if (row.data.biz && !$("o-biz").value) $("o-biz").value = row.data.biz;
+            showLink(); loadBook();
+          } else if (key) {
+            sb.from("makhie_documents").insert({ user_id: u.id, kind: "booking_link", title: "Booking link — " + bizType,
+              data: { key: key, type: bizType, biz: $("o-biz").value.trim() } }).then(function () {});
+          }
+        });
+      }
+    });
+    if (key) { showLink(); loadBook(); }
+
+    $("o-make").addEventListener("click", function () {
+      if (!$("o-biz").value.trim()) { $("o-status").textContent = "Give clients your business name first."; $("o-status").className = "note hint-err"; return; }
+      if (!key) key = MK.uid(10);
+      try {
+        localStorage.setItem("mk.book." + bizType, key);
+        localStorage.setItem("mk.book.biz." + bizType, $("o-biz").value.trim());
+      } catch (e) {}
+      var u = MK.user();
+      if (u && !u.demo && sb) {
+        sb.from("makhie_documents").insert({ user_id: u.id, kind: "booking_link", title: "Booking link — " + bizType,
+          data: { key: key, type: bizType, biz: $("o-biz").value.trim() } }).then(function () {});
+      }
+      $("o-status").textContent = "";
+      showLink(); loadBook();
+    });
+
+    function link() {
+      return location.href.split("?")[0] + "?type=" + bizType + "&b=" + key +
+        "&n=" + encodeURIComponent($("o-biz").value.trim() || "");
+    }
+    function showLink() {
+      $("o-out").style.display = "block";
+      $("o-link").value = link();
+      $("o-qr").src = MK.qrDataUrl(link(), 4);
+      $("o-wa").href = MK.waLink("Book your spot with " + ($("o-biz").value.trim() || "us") + " — pick your day and hour here: " + link());
+    }
+    $("o-copy").addEventListener("click", function () {
+      navigator.clipboard.writeText($("o-link").value).then(function () {
+        $("o-copy").textContent = "Copied ✓";
+        setTimeout(function () { $("o-copy").textContent = "Copy link"; }, 1600);
+      }).catch(function () {});
+    });
+
+    function loadBook() {
+      if (!sb || !key) return;
+      sb.from("makhie_bookings").select("*").eq("owner_key", key)
+        .gte("on_date", new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+        .order("on_date", { ascending: true }).order("at_hour", { ascending: true })
+        .then(function (r) {
+          var list = r.data || [];
+          var box = $("book");
+          if (!list.length) { box.innerHTML = "<p class='note' style='margin-top:10px'>No bookings yet — share your link.</p>"; return; }
+          box.innerHTML = "";
+          list.forEach(function (bk) {
+            var el = document.createElement("div");
+            el.className = "bk";
+            var digits = bk.client_phone.replace(/\D/g, "");
+            if (digits.length === 10 && digits[0] === "0") digits = "27" + digits.slice(1);
+            el.innerHTML =
+              "<div class='bk-top'><b>" + MK.esc(bk.client_name) + "</b>" +
+              "<span class='chip " + bk.status + "'>" + bk.status + "</span>" +
+              "<span style='margin-left:auto;font-weight:800'>" + MK.esc(bk.on_date) + " · " + String(bk.at_hour).padStart(2, "0") + ":00</span></div>" +
+              "<div class='meta'>" + MK.esc(bk.service) + " · " + MK.esc(bk.place === "shop" ? T.shop : T.house) + " · " + MK.esc(bk.client_phone) + "</div>" +
+              (bk.notes ? "<div class='notes'>" + MK.esc(bk.notes) + "</div>" : "") +
+              "<div class='acts'></div>";
+            var acts = el.querySelector(".acts");
+            var wa = document.createElement("a");
+            wa.className = "wa-mini"; wa.target = "_blank"; wa.rel = "noopener";
+            wa.innerHTML = MK.waIcon + "WhatsApp them";
+            wa.href = (digits ? "https://wa.me/" + digits : "https://wa.me/") + "?text=" +
+              encodeURIComponent("Hi " + bk.client_name + " — confirming your " + bk.service + " booking on " +
+                bk.on_date + " at " + String(bk.at_hour).padStart(2, "0") + ":00. See you then!");
+            acts.appendChild(wa);
+            var call = document.createElement("a");
+            call.textContent = "Call"; call.href = "tel:" + bk.client_phone;
+            acts.appendChild(call);
+            function statusBtn(label, cls, st) {
+              var x = document.createElement("button");
+              x.type = "button"; x.className = cls; x.textContent = label;
+              x.addEventListener("click", function () {
+                sb.rpc("makhie_booking_status", { bid: bk.id, okey: key, new_status: st }).then(function () { loadBook(); });
+              });
+              acts.appendChild(x);
+            }
+            if (bk.status !== "confirmed") statusBtn("Confirm ✓", "ok", "confirmed");
+            if (bk.status !== "declined") statusBtn("Decline", "no", "declined");
+            box.appendChild(el);
+          });
+        });
+    }
+    // Fresh bookings while the page is open.
+    setInterval(loadBook, 45000);
+  }
+
+  /* ---------- dispatch (after every declaration above exists) ---------- */
+  if (bkey) {
+    $("client-view").style.display = "block";
+    $("title").textContent = T.title;
+    $("subtitle").textContent = "Pick a day and an hour, leave your details, and they'll contact you personally to confirm.";
+    boot();
+  } else {
+    ownerBoot();
+  }
+})();
+</script>
+</body>
+</html>

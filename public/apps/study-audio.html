@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF to Audio &amp; Summary — Makhie</title>
+<meta name="description" content="Drop in a PDF, a screenshot, or paste text — get a clean summary and downloadable audio for your phone. Everything runs on your device.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .steps { display: grid; gap: 22px; margin-top: 30px; }
+  .step-k { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+    background: var(--accent-soft); color: var(--accent-ink); font-weight: 800; font-size: 13px; margin-right: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 4px; }
+  .seg button { padding: 9px 18px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .stat { display: inline-block; font-size: 12.5px; color: var(--mute); background: var(--accent-soft);
+    border-radius: 6px; padding: 3px 10px; margin: 10px 8px 0 0; }
+  #text-box { min-height: 150px; max-height: 300px; font-size: 13px; }
+  #paste-box { min-height: 150px; font-size: 13px; }
+  .keypoints { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 1.7; color: var(--ink); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .row .f { width: auto; flex: 1 1 160px; }
+  .radio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); margin-right: 14px; cursor: pointer; }
+  /* Premium download surface */
+  .dl-panel { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-top: 14px;
+    background: linear-gradient(160deg, #fff, var(--accent-soft)); }
+  .dl-main { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .dl-badge { flex: none; width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center;
+    background: var(--accent); color: #fff; font-weight: 900; font-size: 13px; letter-spacing: .04em;
+    box-shadow: 0 8px 20px -8px rgba(30,95,214,.5); }
+  .dl-copy { flex: 1; min-width: 200px; }
+  .dl-copy b { font-size: 14.5px; }
+  .dl-copy small { display: block; color: var(--mute); margin-top: 2px; line-height: 1.5; }
+  .dl-bar { margin-top: 14px; display: none; }
+  .dl-done { display: none; margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="study-audio.html">PDF to Audio</a>
+      <a class="link" href="convert.html">Converter</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">PDF to Audio &amp; Summary</h1>
+    <p class="sub">Drop in a PDF, a screenshot, or paste any text. Makhie writes the summary and
+    renders audio you can download for your phone. Your material never leaves this device.</p>
+  </div>
+
+  <div class="steps">
+    <div class="card">
+      <h3><span class="step-k">1</span>Your material</h3>
+      <div class="seg">
+        <button class="on" id="m-file" type="button">PDF / screenshot</button>
+        <button id="m-text" type="button">Paste text</button>
+      </div>
+      <div id="file-mode">
+        <div class="drop" id="drop" style="margin-top:12px">Drop a PDF or a screenshot here, or click to choose</div>
+        <input type="file" id="file" accept="application/pdf,image/*" hidden>
+        <p class="note" id="ocr-note" style="display:none; margin-top:8px"><span class="mk-spin"></span>Reading the words in your screenshot…</p>
+      </div>
+      <div id="text-mode" style="display:none">
+        <label class="f" for="paste-box">Paste anything — notes, an article, a chapter</label>
+        <textarea class="f" id="paste-box"></textarea>
+        <div class="row"><button class="btn" id="use-text" type="button">Use this text</button></div>
+      </div>
+      <div id="stats"></div>
+      <label class="f" for="text-box" id="text-label" style="display:none">The text (edit freely — summary and audio use this)</label>
+      <textarea class="f" id="text-box" style="display:none"></textarea>
+      <p class="note hint-err" id="extract-err" style="display:none"></p>
+    </div>
+
+    <div class="card" id="card-summary" style="display:none">
+      <h3><span class="step-k">2</span>Summary</h3>
+      <p class="note">Key points pulled from your material, in its own words, in original order.</p>
+      <ol class="keypoints" id="keypoints"></ol>
+      <div class="row">
+        <button class="btn quiet small" id="copy-summary" type="button">Copy summary</button>
+      </div>
+    </div>
+
+    <div class="card" id="card-dl" style="display:none">
+      <h3><span class="step-k">3</span>Your audio</h3>
+      <div class="row" style="margin-top:6px">
+        <label class="radio"><input type="radio" name="src-d" value="summary" checked> Summary</label>
+        <label class="radio"><input type="radio" name="src-d" value="full"> Full text</label>
+      </div>
+      <div class="dl-panel">
+        <div class="dl-main">
+          <div class="dl-badge">AMR</div>
+          <div class="dl-copy">
+            <b>Compact audio for your phone</b>
+            <small>Rendered on your device with the Makhie reading voice — small enough to send
+            over anything, plays on any phone. WAV available for full quality.</small>
+          </div>
+          <button class="btn" id="dl-amr" type="button">Download .amr</button>
+          <button class="btn quiet" id="dl-wav" type="button">.wav</button>
+        </div>
+        <div class="bar dl-bar" id="bar"><i></i></div>
+        <div class="dl-done" id="done"></div>
+        <p class="note" id="status-dl" style="margin-top:8px"></p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — files are processed on your device and never uploaded. Audio is for your pocket, not this page.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/pdf.min.js"></script>
+<script src="../assets/vendor/en-us.voice.js"></script>
+<script>
+  // file:// cannot XHR sibling directories, which starves the voice engine of
+  // its voice file. The voice ships embedded above; this shim feeds it to the
+  // engine's own request. Only ever active on file://.
+  (function () {
+    if (location.protocol !== "file:") return;
+    var Open = XMLHttpRequest.prototype.open, Send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (m, url) {
+      this.__mkVoice = /en-us\.json$/.test(String(url));
+      return Open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__mkVoice) return Send.apply(this, arguments);
+      var x = this;
+      setTimeout(function () {
+        Object.defineProperty(x, "status", { value: 200 });
+        Object.defineProperty(x, "readyState", { value: 4 });
+        Object.defineProperty(x, "responseText", { value: JSON.stringify(window.MESPEAK_VOICE_EN_US) });
+        Object.defineProperty(x, "response", { value: JSON.stringify(window.MESPEAK_VOICE_EN_US) });
+        if (x.onreadystatechange) x.onreadystatechange();
+        if (x.onload) x.onload();
+      }, 0);
+    };
+  })();
+</script>
+<script src="../assets/vendor/mespeak.js"></script>
+<script src="../assets/vendor/BenzAMRRecorder.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var pdfjs = window["pdfjs-dist/build/pdf"] || window.pdfjsLib;
+  pdfjs.GlobalWorkerOptions.workerSrc = "../assets/vendor/pdf.worker.min.js";
+  // file:// blocks the pdf.js worker too — fall back to the main thread there.
+  if (location.protocol === "file:") pdfjs.GlobalWorkerOptions.disableWorker = true;
+
+  var fullText = "", summaryText = "", docName = "document";
+  var $ = function (id) { return document.getElementById(id); };
+
+  try {
+    meSpeak.loadConfig("../assets/vendor/mespeak_config.json");
+    meSpeak.loadVoice("en-us.json");
+  } catch (e) {}
+
+  /* ---------- input modes ---------- */
+  $("m-file").addEventListener("click", function () {
+    this.classList.add("on"); $("m-text").classList.remove("on");
+    $("file-mode").style.display = "block"; $("text-mode").style.display = "none";
+  });
+  $("m-text").addEventListener("click", function () {
+    this.classList.add("on"); $("m-file").classList.remove("on");
+    $("file-mode").style.display = "none"; $("text-mode").style.display = "block";
+  });
+  $("use-text").addEventListener("click", function () {
+    var t = $("paste-box").value.trim();
+    if (t.length < 40) { extractFail("Paste a little more text — at least a paragraph."); return; }
+    docName = "pasted-text";
+    gotText(t, "your pasted text", null);
+  });
+
+  var drop = $("drop"), file = $("file");
+  drop.addEventListener("click", function () { file.click(); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("over"); });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault(); drop.classList.remove("over");
+    if (e.dataTransfer.files.length) load(e.dataTransfer.files[0]);
+  });
+  file.addEventListener("change", function () { if (file.files.length) load(file.files[0]); });
+
+  var loadSeq = 0;
+  function load(f) {
+    if (/^image\//.test(f.type)) { ocr(f); return; }
+    if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { extractFail("That doesn't look like a PDF or a screenshot."); return; }
+    var seq = ++loadSeq;
+    drop.innerHTML = "<span class='mk-spin'></span>Reading " + MK.esc(f.name) + "…";
+    $("extract-err").style.display = "none";
+    var r = new FileReader();
+    r.onload = function () {
+      pdfjs.getDocument({ data: r.result }).promise.then(function (doc) {
+        var jobs = [];
+        for (var i = 1; i <= doc.numPages; i++) jobs.push(doc.getPage(i).then(function (pg) { return pg.getTextContent(); }));
+        return Promise.all(jobs).then(function (pages) {
+          if (seq !== loadSeq) return;
+          var out = pages.map(function (tc) {
+            return tc.items.map(function (it) { return it.str; }).join(" ").replace(/\s+/g, " ").trim();
+          }).filter(Boolean).join("\n\n");
+          if (!out || out.length < 40) { extractFail("No selectable text found — this PDF may be a scan. Try dropping it as a screenshot instead."); return; }
+          docName = f.name.replace(/\.pdf$/i, "");
+          gotText(out, f.name, pages.length);
+        });
+      }).catch(function () { if (seq === loadSeq) extractFail("Couldn't read that PDF — it may be corrupted or password-protected."); });
+    };
+    r.readAsArrayBuffer(f);
+  }
+
+  /* ---------- screenshots: OCR, loaded only when needed ---------- */
+  var tessReady = null;
+  function loadTesseract() {
+    if (tessReady) return tessReady;
+    tessReady = new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+      s.onload = function () { res(window.Tesseract); };
+      s.onerror = function () { tessReady = null; rej(new Error("offline")); };
+      document.head.appendChild(s);
+    });
+    return tessReady;
+  }
+  function ocr(f) {
+    var seq = ++loadSeq;
+    $("ocr-note").style.display = "block";
+    $("extract-err").style.display = "none";
+    drop.textContent = "Reading " + f.name + "…";
+    loadTesseract().then(function (T) {
+      return T.recognize(f, "eng");
+    }).then(function (r) {
+      if (seq !== loadSeq) return;
+      $("ocr-note").style.display = "none";
+      var t = (r.data.text || "").replace(/[ \t]+/g, " ").trim();
+      if (t.length < 30) { extractFail("Couldn't find readable text in that image — try a sharper screenshot."); return; }
+      docName = f.name.replace(/\.[^.]+$/, "");
+      gotText(t, f.name + " (read from the image)", null);
+    }).catch(function () {
+      if (seq !== loadSeq) return;
+      $("ocr-note").style.display = "none";
+      extractFail("Screenshot reading needs a connection the first time — go online and try again.");
+    });
+  }
+
+  function extractFail(msg) {
+    drop.textContent = "Drop a PDF or a screenshot here, or click to choose";
+    $("ocr-note").style.display = "none";
+    var e = $("extract-err"); e.textContent = msg; e.style.display = "block";
+  }
+  function gotText(text, label, pages) {
+    fullText = text;
+    drop.textContent = "✓ " + label + " — drop another to replace";
+    var words = text.split(/\s+/).length;
+    $("stats").innerHTML = (pages ? "<span class='stat'>" + pages + " page" + (pages > 1 ? "s" : "") + "</span>" : "") +
+      "<span class='stat'>" + words.toLocaleString() + " words</span>" +
+      "<span class='stat'>~" + Math.max(1, Math.round(words / 150)) + " min of audio</span>";
+    $("text-label").style.display = "block";
+    var box = $("text-box"); box.style.display = "block"; box.value = text;
+    box.oninput = function () { fullText = box.value; summarise(); };
+    summarise();
+    $("card-summary").style.display = "block";
+    $("card-dl").style.display = "block";
+  }
+
+  /* ---------- summary ---------- */
+  var STOP = ("the a an and or but if then else of to in on at for with from by as is are was were be been being " +
+    "this that these those it its they them he she his her you your we our i not no yes do does did done can could " +
+    "will would should may might must have has had about into over under between per each all any some such more most " +
+    "other than which who whom whose what when where why how there here also only very just so too own same").split(" ");
+  var STOPSET = {}; STOP.forEach(function (w) { STOPSET[w] = 1; });
+  function summarise() {
+    var sents = fullText.replace(/\n+/g, " ").match(/[^.!?]+[.!?]+["')\]]*/g) || [fullText];
+    sents = sents.map(function (s) { return s.trim(); }).filter(function (s) { return s.split(/\s+/).length > 4; });
+    if (!sents.length) sents = [fullText.slice(0, 300)];
+    var freq = {};
+    sents.forEach(function (s) {
+      (s.toLowerCase().match(/[a-z']{3,}/g) || []).forEach(function (w) { if (!STOPSET[w]) freq[w] = (freq[w] || 0) + 1; });
+    });
+    var scored = sents.map(function (s, i) {
+      var ws = s.toLowerCase().match(/[a-z']{3,}/g) || [], sc = 0;
+      ws.forEach(function (w) { if (!STOPSET[w]) sc += freq[w] || 0; });
+      return { i: i, s: s, sc: sc / Math.sqrt(ws.length || 1) };
+    });
+    var k = Math.min(8, Math.max(4, Math.round(sents.length * 0.08)));
+    var top = scored.slice().sort(function (a, b) { return b.sc - a.sc; }).slice(0, k)
+      .sort(function (a, b) { return a.i - b.i; });
+    summaryText = top.map(function (t) { return t.s; }).join(" ");
+    $("keypoints").innerHTML = top.map(function (t) { return "<li>" + MK.esc(t.s) + "</li>"; }).join("");
+  }
+  $("copy-summary").addEventListener("click", function () {
+    navigator.clipboard.writeText(summaryText).then(function () {
+      $("copy-summary").textContent = "Copied ✓";
+      setTimeout(function () { $("copy-summary").textContent = "Copy summary"; }, 1600);
+    }).catch(function () { $("copy-summary").textContent = "Copy blocked — select the text above"; });
+  });
+
+  /* ---------- audio: render + download only (never played here) ---------- */
+  var AMR_CAP = 14000;
+  function toChunks(text) {
+    var sents = text.match(/[^.!?]+[.!?]+["')\]]*|\S[^.!?]*$/g) || [text], out = [], cur = "";
+    sents.forEach(function (s) {
+      if ((cur + s).length > 220) { if (cur) out.push(cur); cur = s; } else cur += s;
+    });
+    if (cur.trim()) out.push(cur);
+    return out;
+  }
+  function srcText() {
+    return document.querySelector("input[name='src-d']:checked").value === "summary" ? summaryText : fullText;
+  }
+  function setBar(mode) {
+    var b = $("bar");
+    b.style.display = mode ? "block" : "none";
+    b.classList.toggle("indet", mode === "indet");
+    if (mode !== "indet" && typeof mode === "number") b.firstElementChild.style.width = mode + "%";
+  }
+  function status(msg, err, spin) {
+    var s = $("status-dl");
+    s.innerHTML = (spin ? "<span class='mk-spin'></span>" : "") + MK.esc(msg || "");
+    s.className = "note " + (err ? "hint-err" : "");
+  }
+  function done(msg) {
+    $("done").textContent = msg; $("done").style.display = "block";
+    setTimeout(function () { $("done").style.display = "none"; }, 6000);
+  }
+  function renderWav(text, cb) {
+    var parts = toChunks(text).map(function (c) { return { text: c }; });
+    var fin = false;
+    meSpeak.speakMultipart(parts, { rawdata: "array", speed: 165, wordgap: 2 }, function (ok, id, bytes) {
+      if (fin) return; fin = true;
+      cb(ok && bytes && bytes.length ? new Uint8Array(bytes) : null);
+    });
+    setTimeout(function () { if (!fin) { fin = true; cb(null); } }, 90000);
+  }
+  function prepText() {
+    var t = srcText();
+    if (t.length > AMR_CAP) { t = t.slice(0, AMR_CAP); }
+    return t;
+  }
+  $("dl-wav").addEventListener("click", function () {
+    setBar("indet"); status("Rendering the voice on your device…", false, true);
+    renderWav(prepText(), function (wav) {
+      setBar(false);
+      if (!wav) { status("The voice engine couldn't start — reload the page and try again.", true); return; }
+      MK.download(new Blob([wav], { type: "audio/wav" }), docName + ".wav");
+      status(""); done("Saved " + docName + ".wav ✓ — it's in your downloads, ready for your pocket.");
+    });
+  });
+  $("dl-amr").addEventListener("click", function () {
+    setBar("indet"); status("Rendering the voice on your device…", false, true);
+    renderWav(prepText(), function (wav) {
+      if (!wav) { setBar(false); status("The voice engine couldn't start — reload the page and try again.", true); return;      }
+      setBar(70); $("bar").classList.remove("indet");
+      status("Packing into compact .amr…", false, true);
+      var buf = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength);
+      var packer = new BenzAMRRecorder();
+      packer.initWithArrayBuffer(buf).then(function () {
+        setBar(100);
+        MK.download(packer.getBlob(), docName + ".amr");
+        status(""); done("Saved " + docName + ".amr ✓ — small enough to send anywhere.");
+        setTimeout(function () { setBar(false); }, 700);
+      }).catch(function () {
+        setBar(false);
+        status("AMR packing failed here — downloading .wav instead.", true);
+        MK.download(new Blob([wav], { type: "audio/wav" }), docName + ".wav");
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

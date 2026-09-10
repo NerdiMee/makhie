@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control Room — Makhie</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .gate { max-width: 380px; margin: 90px auto 0; text-align: center; }
+  .gate input { text-align: center; letter-spacing: .3em; text-transform: uppercase; font-weight: 700; }
+  #room { display: none; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 24px; }
+  .kpi { border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); padding: 14px 16px; }
+  .kpi b { display: block; font-size: 22px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); }
+  .kpi.live b { color: var(--ok); }
+  .cols { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; margin-top: 18px; }
+  @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
+  .list-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .list-item .k { color: var(--mute); font-size: 11.5px; }
+  .list-item b { font-variant-numeric: tabular-nums; }
+  .bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12.5px; }
+  .bar-row .lbl { width: 110px; flex: none; color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .bar { flex: 1; height: 10px; border-radius: 5px; background: var(--accent-soft); overflow: hidden; }
+  .bar-row .bar i { display: block; height: 100%; background: var(--accent); }
+  .bar-row .n { width: 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--mute); }
+  .ban-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .ban-row input { flex: 1 1 200px; }
+  .ban-row button { flex: none; }
+  .banned-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+  .banned-item .why { color: var(--mute); font-size: 11.5px; }
+  .banned-item button { border: 1px solid var(--line); background: #fff; border-radius: 7px; padding: 5px 10px;
+    font: 600 11.5px inherit; font-family: inherit; cursor: pointer; color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav"><span class="kicker" style="letter-spacing:.2em">CONTROL ROOM</span></nav>
+  </header>
+
+  <!-- The only door in: the code. -->
+  <div class="gate card" id="gate">
+    <h3>Back room</h3>
+    <p class="note" style="margin:10px 0 14px">This area is for Makhie operations only.</p>
+    <input class="f" id="code" type="password" placeholder="ACCESS CODE" autocomplete="off">
+    <div style="margin-top:12px"><button class="btn" id="enter" type="button" style="width:100%">Enter</button></div>
+    <p class="note hint-err" id="gate-err" style="margin-top:10px"></p>
+  </div>
+
+  <div id="room">
+    <div style="margin-top:30px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+      <h1 class="page" style="margin:0">Control room</h1>
+      <span class="note" id="stamp"></span>
+      <button class="btn quiet small" id="refresh" type="button" style="margin-left:auto">Refresh</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi live"><b id="k-live">—</b><span>Live on site now</span></div>
+      <div class="kpi"><b id="k-users">—</b><span>Accounts signed up</span></div>
+      <div class="kpi"><b id="k-7d">—</b><span>New this week</span></div>
+      <div class="kpi"><b id="k-today">—</b><span>Sessions today</span></div>
+      <div class="kpi"><b id="k-avg">—</b><span>Avg minutes on site</span></div>
+      <div class="kpi"><b id="k-dpu">—</b><span>Docs per account</span></div>
+      <div class="kpi"><b id="k-value">—</b><span>Value on receipts</span></div>
+      <div class="kpi"><b id="k-book">—</b><span>Bookings taken</span></div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <h3>Most used tools (30 days)</h3>
+        <div id="pages"></div>
+      </div>
+      <div class="card">
+        <h3>Documents created</h3>
+        <div id="kinds"></div>
+      </div>
+      <div class="card">
+        <h3>Recent sign-ups</h3>
+        <div id="signups"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>Account control</h3>
+      <p class="note">Ban blocks sign-in immediately (enforced at the door, not just the UI).
+      Deactivation is the same lock with a softer label. Restore lifts either.</p>
+      <div class="ban-row">
+        <input class="f" id="b-email" type="email" placeholder="account email">
+        <input class="f" id="b-why" placeholder="reason (kept on record)">
+        <button class="btn" id="b-ban" type="button" style="background:#b3402a;border-color:#8f2f1e">Ban</button>
+        <button class="btn quiet" id="b-deact" type="button">Deactivate</button>
+      </div>
+      <p class="note" id="b-status" style="margin-top:8px"></p>
+      <div id="banned"></div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie operations — numbers refresh on demand; the door only opens with the code.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb, code = null;
+
+  function tryEnter(c) {
+    if (!sb) { $("gate-err").textContent = "The control room needs a connection."; return; }
+    $("gate-err").textContent = "";
+    sb.rpc("makhie_admin_stats", { code: c }).then(function (r) {
+      if (r.error || !r.data || r.data.error) {
+        $("gate-err").textContent = "That code doesn't open this door.";
+        return;
+      }
+      code = c;
+      try { sessionStorage.setItem("mk.ctrl", c); } catch (e) {}
+      $("gate").style.display = "none";
+      $("room").style.display = "block";
+      paint(r.data);
+    });
+  }
+  $("enter").addEventListener("click", function () { tryEnter($("code").value.trim()); });
+  $("code").addEventListener("keydown", function (e) { if (e.key === "Enter") tryEnter($("code").value.trim()); });
+  // PROCHECK in the URL walks straight in, per the standing test-bypass rule.
+  var qs = new URLSearchParams(location.search);
+  var saved = null;
+  try { saved = sessionStorage.getItem("mk.ctrl"); } catch (e) {}
+  if (/procheck/i.test(location.search)) tryEnter("PROCHECK");
+  else if (saved) tryEnter(saved);
+
+  function load() {
+    sb.rpc("makhie_admin_stats", { code: code }).then(function (r) {
+      if (r.data && !r.data.error) paint(r.data);
+    });
+  }
+  $("refresh").addEventListener("click", load);
+  setInterval(function () { if (code && document.visibilityState === "visible") load(); }, 60000);
+
+  function bars(el, rows, keyName, nName) {
+    var max = rows.length ? Math.max.apply(null, rows.map(function (x) { return x[nName]; })) : 1;
+    el.innerHTML = rows.length ? "" : "<p class='note'>Nothing yet.</p>";
+    rows.forEach(function (x) {
+      var d = document.createElement("div");
+      d.className = "bar-row";
+      d.innerHTML = "<span class='lbl'>" + MK.esc(String(x[keyName])) + "</span>" +
+        "<span class='bar'><i style='width:" + Math.round(100 * x[nName] / max) + "%'></i></span>" +
+        "<span class='n'>" + x[nName] + "</span>";
+      el.appendChild(d);
+    });
+  }
+
+  function paint(s) {
+    $("stamp").textContent = "as of " + new Date().toLocaleTimeString();
+    $("k-live").textContent = s.live_sessions;
+    $("k-users").textContent = s.users_total;
+    $("k-7d").textContent = "+" + s.users_7d;
+    $("k-today").textContent = s.sessions_today;
+    $("k-avg").textContent = s.avg_minutes + "m";
+    $("k-dpu").textContent = s.docs_per_user;
+    $("k-value").textContent = MK.moneyC(s.receipts_value_cents || 0);
+    $("k-book").textContent = s.bookings_total;
+
+    bars($("pages"), s.pages_top || [], "page", "n");
+    var kinds = Object.keys(s.docs_by_kind || {}).map(function (k) { return { k: k, n: s.docs_by_kind[k] }; })
+      .sort(function (a, b) { return b.n - a.n; });
+    bars($("kinds"), kinds, "k", "n");
+
+    $("signups").innerHTML = (s.signups_recent || []).length ? "" : "<p class='note'>None yet.</p>";
+    (s.signups_recent || []).forEach(function (u) {
+      var d = document.createElement("div");
+      d.className = "list-item";
+      d.innerHTML = "<span>" + MK.esc(u.email) + "</span><span class='k'>" + new Date(u.at).toLocaleDateString() + "</span>";
+      $("signups").appendChild(d);
+    });
+
+    $("banned").innerHTML = (s.banned || []).length ? "" : "<p class='note' style='margin-top:10px'>Nobody is banned or deactivated.</p>";
+    (s.banned || []).forEach(function (b) {
+      var d = document.createElement("div");
+      d.className = "banned-item";
+      d.innerHTML = "<span><b>" + MK.esc(b.email) + "</b> <span class='chip'>" + MK.esc(b.kind) + "</span>" +
+        (b.reason ? "<div class='why'>" + MK.esc(b.reason) + "</div>" : "") + "</span>";
+      var un = document.createElement("button");
+      un.type = "button"; un.textContent = "Restore";
+      un.addEventListener("click", function () {
+        sb.rpc("makhie_admin_ban", { code: code, em: b.email, action: "restore", why: "" }).then(load);
+      });
+      d.appendChild(un);
+      $("banned").appendChild(d);
+    });
+  }
+
+  function act(action) {
+    var em = $("b-email").value.trim();
+    if (!em) { $("b-status").textContent = "Which account?"; $("b-status").className = "note hint-err"; return; }
+    sb.rpc("makhie_admin_ban", { code: code, em: em, action: action, why: $("b-why").value.trim() }).then(function (r) {
+      if (r.data === true) {
+        $("b-status").textContent = (action === "ban" ? "Banned" : "Deactivated") + " " + em + " — sign-in is now blocked.";
+        $("b-status").className = "note hint-ok";
+        $("b-email").value = ""; $("b-why").value = "";
+        load();
+      } else {
+        $("b-status").textContent = "No account matched that email.";
+        $("b-status").className = "note hint-err";
+      }
+    });
+  }
+  $("b-ban").addEventListener("click", function () { act("ban"); });
+  $("b-deact").addEventListener("click", function () { act("deactivate"); });
+})();
+</script>
+</body>
+</html>

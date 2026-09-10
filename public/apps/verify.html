@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify a signature — Makhie</title>
+<meta name="description" content="Every signing done on Makhie has a verify link. Open it to check the signature is real, who asked for it, and when it was signed.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .verdict { font-size: 17px; font-weight: 800; margin-bottom: 4px; }
+  .verdict.ok { color: var(--ok); }
+  .verdict.bad { color: #b3402a; }
+  .fact { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .fact b { flex: 0 0 110px; color: var(--mute); font-weight: 600; }
+  .shareout { margin-top: 18px; display: none; }
+  .shareout .grid2 { gap: 14px; align-items: center; }
+  .shareout img { width: 148px; height: 148px; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="sign.html">PDF Signing</a>
+      <a class="link on" href="verify.html">Verify</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Verify a signature</h1>
+    <p class="sub">Every signing done on Makhie has a verify link — open it to check the signature
+    is real: who asked for it, who signed, and exactly when.</p>
+  </div>
+
+  <div class="card" id="how-card" style="margin-top:26px; max-width:640px; display:none">
+    <h3>Check a signing</h3>
+    <p class="note">Paste the verify link (or just the signing id) you were given, and Makhie will
+    look it up.</p>
+    <label class="f" for="v-in">Verify link or id</label>
+    <input class="f" id="v-in" placeholder="e.g. https://…/verify.html?id=abc123xyz">
+    <div class="row">
+      <button class="btn" id="v-go" type="button">Check it</button>
+      <span class="note" id="v-hint"></span>
+    </div>
+  </div>
+
+  <div class="card" id="result-card" style="margin-top:26px; max-width:640px; display:none">
+    <div class="verdict" id="verdict"></div>
+    <p class="note" id="verdict-note"></p>
+    <div id="facts"></div>
+    <div class="shareout" id="share-out">
+      <div class="grid2">
+        <div>
+          <p class="note">Anyone can run this same check — share the verify link.</p>
+          <div class="row">
+            <a class="btn wa small" id="v-wa" target="_blank" rel="noopener">Share on WhatsApp</a>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <img id="v-qr" alt="QR code for this verify page">
+          <div class="note">Scan to open this check</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — a verify link only confirms what happened on the link itself: what was requested, and whether its single use was spent.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb;
+
+  function baseUrl() { return location.href.split("#")[0].split("?")[0]; }
+  function when(iso) {
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso; }
+  }
+
+  var idMatch = location.search.match(/[?&]id=([a-z0-9]+)/i);
+
+  /* ---------- no id: explain + paste box ---------- */
+  if (!idMatch) {
+    $("how-card").style.display = "block";
+    $("v-go").addEventListener("click", function () {
+      var t = $("v-in").value.trim();
+      var m = t.match(/[?&](?:id|s)=([a-z0-9]+)/i);
+      var id = m ? m[1] : (/^[a-z0-9]{4,}$/i.test(t) ? t : null);
+      if (!id) { $("v-hint").textContent = "That doesn't look like a verify link or id."; $("v-hint").className = "note hint-err"; return; }
+      location.href = baseUrl() + "?id=" + id;
+    });
+    return;
+  }
+
+  /* ---------- with id: look it up ---------- */
+  var reqId = idMatch[1];
+  var rc = $("result-card");
+  rc.style.display = "block";
+  $("verdict").textContent = "Checking…";
+  $("verdict-note").textContent = "Looking up this signing.";
+
+  if (!sb) {
+    $("verdict").textContent = "No connection";
+    $("verdict-note").textContent = "Verifying needs a connection — go online and reload the page.";
+    return;
+  }
+
+  sb.rpc("makhie_get_sign_request", { req_id: reqId }).then(function (r) {
+    if (r.error) {
+      $("verdict").className = "verdict bad";
+      $("verdict").textContent = "Couldn't check";
+      $("verdict-note").textContent = "Something went wrong looking this up — check your connection and reload.";
+      return;
+    }
+    if (!r.data || !r.data.length) {
+      $("verdict").className = "verdict bad";
+      $("verdict").textContent = "✗ No such signing";
+      $("verdict-note").textContent = "No such signing exists — treat the document with caution.";
+      return;
+    }
+    var req = r.data[0];
+    var facts =
+      "<div class='fact'><b>Document</b><span>" + MK.esc(req.doc_name || "—") + "</span></div>" +
+      "<div class='fact'><b>Requested by</b><span>" + MK.esc(req.from_name || "—") + "</span></div>" +
+      "<div class='fact'><b>Signer</b><span>" + MK.esc(req.signer_name || "—") + "</span></div>" +
+      "<div class='fact'><b>Created</b><span>" + MK.esc(when(req.created_at)) + "</span></div>";
+    if (req.used_at) {
+      $("verdict").className = "verdict ok";
+      $("verdict").textContent = "✓ Signed";
+      $("verdict-note").textContent = "This signing link was used exactly once. The details below are what was requested and when it was signed.";
+      facts += "<div class='fact'><b>Signed on</b><span>" + MK.esc(when(req.used_at)) + "</span></div>";
+    } else {
+      $("verdict").textContent = "Not signed yet";
+      $("verdict-note").textContent = "Not signed yet — this document is still awaiting signature.";
+    }
+    $("facts").innerHTML = facts;
+
+    var link = baseUrl() + "?id=" + reqId;
+    $("v-qr").src = MK.qrDataUrl(link, 5);
+    $("v-wa").href = MK.waLink("Check the signature on \"" + (req.doc_name || "a document") +
+      "\" yourself — every Makhie signing can be verified: " + link);
+    $("share-out").style.display = "block";
+  }).catch(function () {
+    $("verdict").className = "verdict bad";
+    $("verdict").textContent = "Couldn't check";
+    $("verdict-note").textContent = "Something went wrong looking this up — check your connection and reload.";
+  });
+})();
+</script>
+</body>
+</html>

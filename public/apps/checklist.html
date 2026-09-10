@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paperwork Checklist — Makhie</title>
+<meta name="description" content="Say who you want to supply. Makhie builds your likely paperwork checklist — and where something is missing, helps you create it.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .who { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; }
+  .who button { border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 14px 12px;
+    font: 600 13.5px inherit; font-family: inherit; color: var(--ink); cursor: pointer; text-align: left; }
+  .who button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+  .check { display: none; margin-top: 8px; }
+  .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .check-item input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+  .check-item .body { flex: 1; }
+  .check-item b { font-size: 14px; }
+  .check-item .why { font-size: 12.5px; color: var(--mute); line-height: 1.55; margin-top: 2px; }
+  .check-item a.make { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); text-decoration: none; }
+  .check-item a.make:hover { text-decoration: underline; }
+  .progress { font-size: 13px; font-weight: 700; color: var(--accent-ink); margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="checklist.html">Paperwork Checklist</a>
+      <a class="link" href="evidence.html">Business Evidence Pack</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Paperwork Checklist</h1>
+    <p class="sub">"I want to supply a school." Good — here's the paperwork that door usually asks
+    for, and where you don't have something yet, Makhie helps you create it. Paperwork is an
+    opportunity engine, not a punishment.</p>
+  </div>
+
+  <div class="card" style="margin-top:26px">
+    <h3>Who do you want to supply?</h3>
+    <div class="who" id="who">
+      <button data-who="school" type="button">🏫 A school</button>
+      <button data-who="government" type="button">🏛️ Government / tender</button>
+      <button data-who="corporate" type="button">🏢 A company / corporate</button>
+      <button data-who="retailer" type="button">🛒 A shop / retailer</button>
+      <button data-who="events" type="button">🎪 Events &amp; functions</button>
+      <button data-who="households" type="button">🏠 Households / walk-in customers</button>
+    </div>
+  </div>
+
+  <div class="card check" id="check-card">
+    <h3 id="check-title"></h3>
+    <p class="note" id="check-sub"></p>
+    <div id="check-list"></div>
+    <div class="progress" id="progress"></div>
+    <div class="row">
+      <button class="btn quiet" id="pdf" type="button">Download checklist (PDF)</button>
+      <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      <span class="note" id="status"></span>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — requirements differ per buyer; treat this as the usual starting list, and always confirm their exact list.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  var BASE = [
+    { k: "company", t: "Company information", w: "Registration number and company details — buyers check you exist.", make: "company.html", makeLabel: "Not registered yet? Create with Makhi →" },
+    { k: "bank", t: "Banking details", w: "A business account in the company name; a confirmation letter from the bank." },
+    { k: "tax", t: "Tax-related documentation", w: "Tax number and, for most formal buyers, a SARS tax clearance / compliance status PIN." },
+    { k: "profile", t: "Supplier / company profile", w: "One or two pages: who you are, what you supply, who you've supplied.", make: "evidence.html", makeLabel: "Build it from your Makhi records →" },
+    { k: "pricing", t: "Pricing / quotation", w: "A clean quote on your letterhead with unit prices and totals.", make: "receipts.html", makeLabel: "Create with Makhi →" },
+    { k: "proof", t: "Previous work / proof of capability", w: "Photos, references, signed delivery notes — evidence you deliver.", make: "delivery.html", makeLabel: "Start collecting proof with Makhi →" }
+  ];
+  var EXTRA = {
+    school: [
+      { k: "safety", t: "Health & safety basics", w: "For food: municipal Certificate of Acceptability. For maintenance work: basic safety file. Schools ask because children are involved." },
+      { k: "sgb", t: "Letter to the SGB / principal", w: "A short introduction letter addressed to the school governing body — who you are, what you offer, your prices." }
+    ],
+    government: [
+      { k: "csd", t: "CSD registration", w: "Register on the Central Supplier Database (csd.gov.za) — government buyers can only pay CSD-registered suppliers." },
+      { k: "bbbee", t: "B-BBEE affidavit / certificate", w: "For most small businesses a sworn affidavit is enough — free at any police station or via BizPortal." },
+      { k: "sbd", t: "SBD forms", w: "Standard Bidding Documents come with each tender — read them line by line; missing one form disqualifies the whole bid." }
+    ],
+    corporate: [
+      { k: "vendor", t: "Vendor onboarding pack", w: "Corporates have their own forms — ask procurement for their vendor application early; it can take weeks." },
+      { k: "insurance", t: "Liability insurance", w: "Many corporates require public liability cover before you set foot on site." }
+    ],
+    retailer: [
+      { k: "barcode", t: "Product labelling & barcodes", w: "Retail shelves need barcoded, labelled product — GS1 South Africa issues barcodes." },
+      { k: "consign", t: "Supply terms", w: "Know your answer on consignment vs upfront payment, returns, and delivery days before the buyer asks." }
+    ],
+    events: [
+      { k: "coa", t: "Certificate of Acceptability (food)", w: "Serving food at events needs the municipal CoA for your kitchen." },
+      { k: "deposit", t: "Deposit & cancellation terms", w: "Events cancel — written deposit terms protect your weekend.", make: "agree.html", makeLabel: "Write the terms with Makhi →" }
+    ],
+    households: [
+      { k: "receipts", t: "Receipts for every job", w: "Households trust paper — and your records grow with every receipt.", make: "receipts.html", makeLabel: "Create with Makhi →" },
+      { k: "agreements", t: "Simple written agreements", w: "Price, deposit, completion date — in writing, every time.", make: "agree.html", makeLabel: "Create with Makhi →" }
+    ]
+  };
+  var TITLE = {
+    school: "Supplying a school", government: "Government & tenders", corporate: "Supplying a corporate",
+    retailer: "Getting onto shop shelves", events: "Events & functions", households: "Households & walk-ins"
+  };
+
+  var who = null, items = [];
+  function ticksKey() { return "mk.checklist." + who; }
+  function loadTicks() { try { return JSON.parse(localStorage.getItem(ticksKey()) || "{}"); } catch (e) { return {}; } }
+
+  [].forEach.call(document.querySelectorAll("#who button"), function (b) {
+    b.addEventListener("click", function () {
+      [].forEach.call(document.querySelectorAll("#who button"), function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      who = b.getAttribute("data-who");
+      items = BASE.concat(EXTRA[who] || []);
+      render();
+    });
+  });
+
+  function render() {
+    var ticks = loadTicks();
+    $("check-card").style.display = "block";
+    $("check-title").textContent = TITLE[who];
+    $("check-sub").textContent = "Your likely paperwork checklist — tick what you already have.";
+    $("check-list").innerHTML = items.map(function (it, i) {
+      return "<div class='check-item'>" +
+        "<input type='checkbox' id='ck-" + i + "'" + (ticks[it.k] ? " checked" : "") + ">" +
+        "<div class='body'><b>" + MK.esc(it.t) + "</b>" +
+        "<div class='why'>" + MK.esc(it.w) + "</div>" +
+        (it.make ? "<a class='make' href='" + it.make + "'>" + MK.esc(it.makeLabel || "Create with Makhi →") + "</a>" : "") +
+        "</div></div>";
+    }).join("");
+    items.forEach(function (it, i) {
+      $("ck-" + i).addEventListener("change", function () {
+        var t = loadTicks(); t[it.k] = $("ck-" + i).checked;
+        try { localStorage.setItem(ticksKey(), JSON.stringify(t)); } catch (e) {}
+        progress();
+      });
+    });
+    progress();
+    $("check-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function progress() {
+    var t = loadTicks();
+    var have = items.filter(function (it) { return t[it.k]; }).length;
+    $("progress").textContent = have + " of " + items.length + " ready" +
+      (have === items.length ? " — you're ready to knock on that door." : "");
+    MK.saveDoc && null; // records are only written on PDF export below
+  }
+
+  $("pdf").addEventListener("click", function () {
+    var t = loadTicks();
+    var today = new Date().toISOString().slice(0, 10);
+    var p = MK.pdfStart("Paperwork checklist", [today, TITLE[who]]);
+    items.forEach(function (it) {
+      p.room(14);
+      p.doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(27, 39, 64);
+      p.doc.text((t[it.k] ? "[x] " : "[  ] ") + it.t, p.M, p.y);
+      p.y += 5;
+      p.doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(92, 106, 133);
+      var lines = p.doc.splitTextToSize(it.w, p.W - 2 * p.M - 8);
+      p.doc.text(lines, p.M + 8, p.y);
+      p.y += lines.length * 4.5 + 4;
+    });
+    p.p("Missing something? Open Makhi — the company registration helper, receipt & invoice maker, agreement writer, delivery proof and evidence pack cover most of this list.", true);
+    p.finish("checklist-" + who + "-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("Paperwork checklist - " + TITLE[who] + ". PDF attached."); };
+    var have = items.filter(function (it) { return t[it.k]; }).length;
+    MK.saveDoc("checklist", "Checklist — " + TITLE[who] + " (" + have + "/" + items.length + ")", 0,
+      { who: who, ticks: t, total: items.length, have: have }).then(function () {
+      $("status").textContent = "Saved to your records ✓";
+    }).catch(function () {});
+  });
+})();
+</script>
+</body>
+</html>

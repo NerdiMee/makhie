@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Received — Makhie</title>
+<meta name="description" content="Count what arrives against what you ordered. Photo, note, and a dispute message ready for the supplier — memory is not a stock system.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .missing { display: none; margin-top: 14px; border-left: 3px solid #b3402a; background: #fdf0ec;
+    border-radius: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; color: #b3402a; }
+  .allgood { display: none; margin-top: 14px; border-left: 3px solid var(--ok); background: var(--ok-soft);
+    border-radius: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; color: var(--ok); }
+  #photo-thumb { max-height: 110px; border: 1px solid var(--line); border-radius: 8px; display: none; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="delivery.html">Delivery Proof</a>
+      <a class="link on" href="stock.html">Stock Received</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Stock Received</h1>
+    <p class="sub">You ordered 30 crates; count what actually arrived. If something is missing,
+    Makhie writes the dispute for you — with the photo to back it up. This is money, not admin.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The delivery</h3>
+      <label class="f" for="s-supplier">Supplier</label>
+      <input class="f" id="s-supplier" placeholder="e.g. XYZ Wholesalers">
+      <label class="f" for="s-item">What was ordered</label>
+      <input class="f" id="s-item" placeholder="e.g. Crates of cooldrink">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="s-expected">Expected</label>
+          <input class="f" id="s-expected" type="number" min="0" placeholder="30">
+        </div>
+        <div>
+          <label class="f" for="s-received">Received</label>
+          <input class="f" id="s-received" type="number" min="0" placeholder="27">
+        </div>
+      </div>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="s-unit">Value per unit (optional)</label>
+          <input class="f" id="s-unit" placeholder="R0.00">
+        </div>
+        <div>
+          <label class="f" for="s-ref">Invoice / order no. (optional)</label>
+          <input class="f" id="s-ref">
+        </div>
+      </div>
+      <label class="f" for="s-note">Note</label>
+      <input class="f" id="s-note" placeholder="e.g. Two crates damaged, one short on the pallet">
+      <label class="f">Photo of what arrived (optional)</label>
+      <div class="row" style="margin-top:6px">
+        <button class="btn quiet small" id="photo-pick" type="button">Add photo</button>
+        <input type="file" id="photo-file" accept="image/*" capture="environment" hidden>
+      </div>
+      <img id="photo-thumb" alt="Delivery photo">
+      <div class="missing" id="missing"></div>
+      <div class="allgood" id="allgood">All received ✓ — nothing missing.</div>
+      <div class="row">
+        <button class="btn" id="record" type="button">Record it (PDF + save)</button>
+        <a class="btn wa" id="dispute" target="_blank" rel="noopener" style="display:none">Dispute on WhatsApp</a>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+    </div>
+
+    <div class="card">
+      <h3>Why bother?</h3>
+      <p>Three missing crates a week is a lot of money a year. A recorded count with a photo,
+      sent the same day, is the difference between "are you sure?" and a credit note.</p>
+      <p style="margin-top:10px">Every count you record lands in your Makhie records — the
+      dashboard adds up what shortages are costing you over time.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — counts and photos stay on your device unless you're signed in.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var photoUrl = null;
+
+  $("photo-pick").addEventListener("click", function () { $("photo-file").click(); });
+  $("photo-file").addEventListener("change", function () {
+    var f = $("photo-file").files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      var img = new Image();
+      img.onerror = function () { $("status").textContent = "That photo couldn't be read — try another."; };
+      img.onload = function () {
+        var cv = document.createElement("canvas");
+        var s = Math.min(1, 1000 / img.width);
+        cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        photoUrl = cv.toDataURL("image/jpeg", 0.82);
+        $("photo-thumb").src = photoUrl; $("photo-thumb").style.display = "block";
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(f);
+  });
+
+  function counts() {
+    var exp = Math.max(0, parseInt($("s-expected").value, 10) || 0);
+    var rec = Math.max(0, parseInt($("s-received").value, 10) || 0);
+    return { exp: exp, rec: rec, missing: Math.max(0, exp - rec) };
+  }
+  function refresh() {
+    var c = counts();
+    if (!c.exp) { $("missing").style.display = "none"; $("allgood").style.display = "none"; $("dispute").style.display = "none"; return; }
+    if (c.missing > 0) {
+      var unitC = MK.parseAmount($("s-unit").value);
+      $("missing").textContent = "Missing: " + c.missing +
+        (unitC ? " — about " + MK.moneyC(c.missing * unitC) + " short" : "");
+      $("missing").style.display = "block"; $("allgood").style.display = "none";
+      $("dispute").style.display = "inline-block";
+      $("dispute").href = MK.waLink(
+        "STOCK DISPUTE — " + ($("s-supplier").value || "supplier") + "\n" +
+        "Order: " + ($("s-item").value || "stock") + ($("s-ref").value ? " (ref " + $("s-ref").value + ")" : "") + "\n" +
+        "Expected: " + c.exp + "\nReceived: " + c.rec + "\nMissing: " + c.missing + "\n" +
+        ($("s-note").value ? "Note: " + $("s-note").value + "\n" : "") +
+        "Recorded with Makhie on " + new Date().toISOString().slice(0, 10) + ". Please advise on credit/replacement.");
+    } else {
+      $("missing").style.display = "none"; $("allgood").style.display = "block"; $("dispute").style.display = "none";
+    }
+  }
+  ["s-expected", "s-received", "s-unit", "s-supplier", "s-item", "s-ref", "s-note"].forEach(function (id) {
+    $(id).addEventListener("input", refresh);
+  });
+
+  $("record").addEventListener("click", function () {
+    var c = counts();
+    if (!$("s-supplier").value.trim() || !c.exp) {
+      $("status").textContent = "Fill in the supplier and how many you expected."; $("status").className = "note hint-err"; return;
+    }
+    var today = new Date().toISOString().slice(0, 10);
+    var unitC = MK.parseAmount($("s-unit").value);
+    var p = MK.pdfStart("Stock received", [today]);
+    p.kv("Supplier", $("s-supplier").value);
+    p.kv("Order", $("s-item").value || "—");
+    if ($("s-ref").value) p.kv("Reference", $("s-ref").value);
+    p.h("The count");
+    p.kv("Expected", String(c.exp));
+    p.kv("Received", String(c.rec));
+    p.kv("Missing", c.missing ? String(c.missing) + (unitC ? "  (≈ " + MK.moneyC(c.missing * unitC) + ")" : "") : "0 — all received");
+    if ($("s-note").value) { p.h("Note"); p.p($("s-note").value); }
+    if (photoUrl) {
+      p.h("Photo of what arrived");
+      p.room(80);
+      p.doc.addImage(photoUrl, "JPEG", p.M, p.y, 90, 0);
+      p.y += 78;
+    }
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("Stock received count - " + $("s-supplier").value + ". PDF attached."); };
+    p.finish("stock-" + today + ($("s-ref").value ? "-" + $("s-ref").value.replace(/[^\w-]+/g, "") : "") + ".pdf");
+    MK.saveDoc("stock", "Stock — " + $("s-supplier").value + " (" + c.rec + "/" + c.exp + ")",
+      c.missing * unitC, {
+        supplier: $("s-supplier").value, item: $("s-item").value, ref: $("s-ref").value,
+        expected: c.exp, received: c.rec, missing: c.missing, unit_cents: unitC, note: $("s-note").value
+      }).then(function () {
+      $("status").textContent = "Recorded ✓ — PDF downloaded and count saved.";
+      $("status").className = "note hint-ok";
+    }).catch(function () {
+      $("status").textContent = "PDF downloaded; the count couldn't be saved online.";
+      $("status").className = "note";
+    });
+  });
+})();
+</script>
+</body>
+</html>

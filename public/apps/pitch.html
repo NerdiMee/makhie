@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitch Builder — Makhie</title>
+<meta name="description" content="Build a tight elevator pitch from five honest answers, practise it against the clock, then take it to the Makhie Stage.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .script { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 16px 18px; font-size: 15px; line-height: 1.75; color: var(--ink); display: none; }
+  .timer { font-size: 40px; font-weight: 900; letter-spacing: -.02em; color: var(--ink); }
+  .timer.over { color: #b3402a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="pitch.html">Pitch Builder</a>
+      <a class="link" href="stage.html">The pitch board</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Pitch Builder</h1>
+    <p class="sub">Five honest answers become one tight pitch. Practise it against the 20-second
+    clock until it lands, then take it to the pitch board where investors are listening.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The five answers</h3>
+      <label class="f" for="p-who">1 · Who are you?</label>
+      <input class="f" id="p-who" placeholder="e.g. I'm Nomsa, I run a catering business in Soweto">
+      <label class="f" for="p-problem">2 · What problem do you see?</label>
+      <input class="f" id="p-problem" placeholder="e.g. Funerals and events struggle to find reliable caterers at short notice">
+      <label class="f" for="p-solution">3 · What do you do about it?</label>
+      <input class="f" id="p-solution" placeholder="e.g. I keep a trained standby team that can cater for 200 people within 24 hours">
+      <label class="f" for="p-traction">4 · What proves it works?</label>
+      <input class="f" id="p-traction" placeholder="e.g. 40 events this year, 5 repeat corporate clients, R30k monthly turnover">
+      <label class="f" for="p-ask">5 · What do you need?</label>
+      <input class="f" id="p-ask" placeholder="e.g. R80k for a second mobile kitchen to take weekend double-bookings">
+      <div class="row">
+        <button class="btn" id="build" type="button">Build my pitch</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Your pitch</h3>
+      <div class="script" id="script"></div>
+      <div class="row" id="practice-row" style="display:none">
+        <div class="timer" id="timer">20.0</div>
+        <button class="btn quiet" id="clock" type="button">Start the clock</button>
+        <button class="btn quiet small" id="copy" type="button">Copy pitch</button>
+        <a class="btn wa small" id="wa-pitch" target="_blank" rel="noopener">Share on WhatsApp</a>
+        <button class="btn quiet small mk-ai" id="ai-tighten" type="button" style="display:none">✨ Tighten with AI</button>
+      </div>
+      <p class="note" id="tip" style="display:none; margin-top:10px">Read it aloud. If the clock
+      goes red before you finish, cut words — not speed. When it fits, you're ready for the pitch board.</p>
+      <div class="row" id="stage-row" style="display:none">
+        <a class="btn" href="stage.html?draft=1">Take it to the pitch board →</a>
+        <span class="note">Your pitch rides along.</span>
+      </div>
+      <p class="note" id="status" style="margin-top:8px"></p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — your pitch is yours; it only goes public when you post it on the pitch board.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function build() {
+    var who = $("p-who").value.trim(), prob = $("p-problem").value.trim(),
+        sol = $("p-solution").value.trim(), tr = $("p-traction").value.trim(), ask = $("p-ask").value.trim();
+    if (!who || !prob || !sol) { $("status").textContent = "Answer at least the first three."; return null; }
+    var s = who.replace(/\.$/, "") + ". " + prob.replace(/\.$/, "") + ". " + sol.replace(/\.$/, "") + "." +
+      (tr ? " " + tr.replace(/\.$/, "") + "." : "") +
+      (ask ? " " + ask.replace(/\.$/, "") + "." : "");
+    return s;
+  }
+
+  $("build").addEventListener("click", function () {
+    var s = build();
+    if (!s) return;
+    $("script").textContent = s;
+    $("script").style.display = "block";
+    $("practice-row").style.display = "flex";
+    $("tip").style.display = "block";
+    $("stage-row").style.display = "flex";
+    var words = s.split(/\s+/).length;
+    $("status").textContent = words + " words — about " + Math.round(words / 2.6) + " seconds aloud.";
+    try { localStorage.setItem("mk.pitch.draft", JSON.stringify({
+      script: s, who: $("p-who").value, ask: $("p-ask").value
+    })); } catch (e) {}
+    MK.saveDoc("pitch_script", "Elevator pitch", 0, { script: s }).catch(function () {});
+  });
+
+  /* 20-second practice clock */
+  var t0 = null, raf = null;
+  $("clock").addEventListener("click", function () {
+    if (t0) { t0 = null; cancelAnimationFrame(raf); $("clock").textContent = "Start the clock"; $("timer").className = "timer"; $("timer").textContent = "20.0"; return; }
+    t0 = performance.now(); $("clock").textContent = "Reset";
+    (function tick() {
+      if (!t0) return;
+      var left = 20 - (performance.now() - t0) / 1000;
+      $("timer").textContent = Math.abs(left).toFixed(1);
+      $("timer").className = left < 0 ? "timer over" : "timer";
+      raf = requestAnimationFrame(tick);
+    })();
+  });
+
+  $("ai-tighten").addEventListener("click", function () {
+    var btn = this, orig = $("script").textContent;
+    if (!orig.trim()) { $("status").textContent = "Build your pitch first."; return; }
+    btn.disabled = true; btn.textContent = "Tightening…";
+    MK.ai(
+      "You tighten spoken elevator pitches for South African entrepreneurs. Keep every fact and number; cut filler; make it land in under 20 seconds aloud (max 55 words). Return ONLY the pitch text.",
+      orig
+    ).then(function (t) {
+      $("script").textContent = t.trim();
+      var words = t.trim().split(/\s+/).length;
+      $("status").textContent = "AI-tightened to " + words + " words — press Build my pitch to go back to your version.";
+    }).catch(function () {
+      $("status").textContent = "AI couldn't answer just now — your pitch is untouched.";
+    }).then(function () { btn.disabled = false; btn.textContent = "✨ Tighten with AI"; });
+  });
+  $("wa-pitch").addEventListener("click", function () {
+    this.href = MK.waLink("My pitch:\n\n" + $("script").textContent + "\n\n— built on Makhie");
+  });
+  $("copy").addEventListener("click", function () {
+    navigator.clipboard.writeText($("script").textContent).then(function () {
+      $("copy").textContent = "Copied ✓";
+      setTimeout(function () { $("copy").textContent = "Copy pitch"; }, 1600);
+    }).catch(function () { $("copy").textContent = "Copy blocked"; });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Money In &amp; Money Out — Makhie</title>
+<meta name="description" content="A simple cashbook: record money in and money out as it happens, and print a clean, professional monthly statement with your logo.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { padding: 9px 20px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; transition: background .14s, color .14s; }
+  .seg button.in.on { background: var(--ok); color: #fff; }
+  .seg button.out.on { background: #b3402a; color: #fff; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+  .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .kpi b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .kpi span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); }
+  .kpi.in b { color: var(--ok); } .kpi.out b { color: #b3402a; }
+  .entries { margin-top: 12px; max-height: 380px; overflow-y: auto; }
+  .entry { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .entry .d { color: var(--mute); font-size: 11.5px; width: 44px; flex: none; }
+  .entry .t { flex: 1; min-width: 0; }
+  .entry .a { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .entry .a.in { color: var(--ok); } .entry .a.out { color: #b3402a; }
+  .entry button { border: 0; background: none; color: var(--mute); cursor: pointer; font-size: 14px; padding: 4px; }
+  .entry button:hover { color: #b3402a; }
+  .logo-box { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+  .logo-box img { height: 40px; max-width: 150px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #fff; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="receipts.html">Receipts</a>
+      <a class="link" href="dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Money In &amp; Money Out</h1>
+    <p class="sub">A cashbook that takes five seconds per entry. Record money as it moves; at
+    month end, print a clean statement with your logo that banks, funders and your own eyes can
+    trust.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Record it</h3>
+      <div class="row" style="margin-top:6px">
+        <div class="seg">
+          <button class="in on" id="t-in" type="button">Money in</button>
+          <button class="out" id="t-out" type="button">Money out</button>
+        </div>
+      </div>
+      <label class="f" for="e-desc">What was it?</label>
+      <input class="f" id="e-desc" placeholder="e.g. Catering deposit — Dlamini wedding">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="e-amt">Amount</label>
+          <input class="f" id="e-amt" placeholder="R600" inputmode="decimal">
+        </div>
+        <div>
+          <label class="f" for="e-date">Date</label>
+          <input class="f" id="e-date" type="date">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="e-add" type="button">Add entry</button>
+        <span class="note" id="e-status"></span>
+      </div>
+
+      <h3 style="margin-top:24px">Month-end statement</h3>
+      <label class="f">Your business logo (optional — appears on the statement)</label>
+      <div class="logo-box">
+        <button class="btn quiet small" id="logo-pick" type="button">Upload logo</button>
+        <input type="file" id="logo-file" accept="image/*" hidden>
+        <img id="logo-thumb" alt="Logo preview">
+      </div>
+      <label class="f" for="biz">Business name (for the statement)</label>
+      <input class="f" id="biz" placeholder="e.g. Nomsa's Catering">
+      <div class="row">
+        <button class="btn" id="pdf" type="button">Print this month's statement (PDF)</button>
+        <a class="btn wa" id="wa-month" target="_blank" rel="noopener">Share month summary</a>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send statement PDF</button>
+      </div>
+      <p class="note" id="pdf-status" style="margin-top:8px"></p>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+        <h3>The month</h3>
+        <input class="f" id="month" type="month" style="width:auto">
+      </div>
+      <div class="kpis" style="margin-top:12px">
+        <div class="kpi in"><b id="k-in">R0.00</b><span>Money in</span></div>
+        <div class="kpi out"><b id="k-out">R0.00</b><span>Money out</span></div>
+        <div class="kpi"><b id="k-net">R0.00</b><span>What's left</span></div>
+      </div>
+      <div class="entries" id="entries"><p class="note" style="margin-top:12px">No entries this month yet.</p></div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — your cashbook is private: on your device, or in your account when signed in.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb, cloud = false, items = [], dir = "in", logoData = null, logoRatio = 1;
+
+  function localItems() { try { return JSON.parse(localStorage.getItem("mk.cash") || "[]"); } catch (e) { return []; } }
+  function saveLocal() { try { localStorage.setItem("mk.cash", JSON.stringify(items)); } catch (e) {} }
+  function monthOf(d) { return String(d).slice(0, 7); }
+
+  /* ---------- load ---------- */
+  MK.onAuth(function (u) {
+    cloud = !!(u && !u.demo && sb);
+    if (cloud) {
+      // Migrate anything recorded on this phone before showing the cloud book,
+      // so signing in never hides an entry. Local only clears once the push lands.
+      var pending = localItems();
+      var rows = pending.map(function (it) {
+        return { client_id: it.id || MK.uid(10), kind: "cashflow", title: it.desc,
+          amount_cents: it.cents, data: { dir: it.dir, date: it.date } };
+      });
+      var migrated = pending.length ? MK.pushDocs(rows) : Promise.resolve(true);
+      migrated.then(function (ok) {
+        if (ok) { try { localStorage.removeItem("mk.cash"); } catch (e) {} }
+        sb.from("makhie_documents").select("id,client_id,title,amount_cents,data,created_at")
+          .eq("kind", "cashflow").order("created_at", { ascending: true }).limit(2000)
+          .then(function (r) {
+            if (r.error) { cloud = false; items = pending; render(); return; }
+            items = r.data.map(function (d) {
+              var it = { id: d.id, dir: d.data.dir || "in", desc: d.title, cents: d.amount_cents,
+                date: d.data.date || d.created_at.slice(0, 10) };
+              if (d.client_id) it.client_id = d.client_id;
+              return it;
+            });
+            if (!ok) {
+              // Push didn't land — keep local entries in view; they migrate next visit.
+              var seen = {};
+              r.data.forEach(function (d) { if (d.client_id) seen[d.client_id] = 1; });
+              pending.forEach(function (it) { if (!it.id || !seen[it.id]) items.push(it); });
+            }
+            render();
+          });
+      });
+    } else { items = localItems(); render(); }
+  });
+
+  /* ---------- add / remove ---------- */
+  $("t-in").addEventListener("click", function () { dir = "in"; $("t-in").classList.add("on"); $("t-out").classList.remove("on"); });
+  $("t-out").addEventListener("click", function () { dir = "out"; $("t-out").classList.add("on"); $("t-in").classList.remove("on"); });
+
+  $("e-add").addEventListener("click", function () {
+    var desc = $("e-desc").value.trim(), cents = MK.parseAmount($("e-amt").value), date = $("e-date").value;
+    if (!desc || !cents || !date) { $("e-status").textContent = "Description, amount and date — all three."; $("e-status").className = "note hint-err"; return; }
+    var it = { dir: dir, desc: desc, cents: cents, date: date };
+    var done = function () {
+      $("e-desc").value = ""; $("e-amt").value = "";
+      $("e-status").textContent = "Recorded ✓"; $("e-status").className = "note hint-ok";
+      $("month").value = monthOf(date);
+      render();
+      MK.nudge();
+    };
+    if (cloud) {
+      sb.from("makhie_documents").insert({
+        user_id: MK.user().id, kind: "cashflow", title: desc, amount_cents: cents,
+        data: { dir: dir, date: date }
+      }).select("id").single().then(function (r) {
+        if (r.error) throw r.error;
+        it.id = r.data.id; items.push(it); done();
+      }).catch(function () {
+        // Cloud refused or unreachable — keep the entry on this phone instead.
+        it.id = MK.uid(8);
+        var all = localItems(); all.push(it);
+        try { localStorage.setItem("mk.cash", JSON.stringify(all)); } catch (e) {}
+        items.push(it); done();
+        $("e-status").textContent = "Saved on this phone — it will sync next time you're online.";
+      });
+    } else { it.id = MK.uid(8); items.push(it); saveLocal(); done(); }
+  });
+
+  function remove(it) {
+    items = items.filter(function (x) { return x !== it; });
+    if (cloud) sb.from("makhie_documents").delete().eq("id", it.id).then(function () {});
+    else saveLocal();
+    render();
+  }
+
+  /* ---------- month view ---------- */
+  function monthItems() {
+    var m = $("month").value;
+    return items.filter(function (i) { return monthOf(i.date) === m; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  }
+  function totals(list) {
+    var inC = 0, outC = 0;
+    list.forEach(function (i) { if (i.dir === "in") inC += i.cents; else outC += i.cents; });
+    return { inC: inC, outC: outC, netC: inC - outC };
+  }
+  function render() {
+    var list = monthItems(), t = totals(list);
+    $("k-in").textContent = MK.moneyC(t.inC);
+    $("k-out").textContent = MK.moneyC(t.outC);
+    $("k-net").textContent = (t.netC < 0 ? "−" : "") + MK.moneyC(Math.abs(t.netC));
+    var box = $("entries");
+    if (!list.length) { box.innerHTML = "<p class='note' style='margin-top:12px'>No entries this month yet.</p>"; return; }
+    box.innerHTML = "";
+    list.forEach(function (it) {
+      var el = document.createElement("div");
+      el.className = "entry";
+      el.innerHTML = "<span class='d'>" + MK.esc(it.date.slice(8)) + "/" + MK.esc(it.date.slice(5, 7)) + "</span>" +
+        "<span class='t'>" + MK.esc(it.desc) + "</span>" +
+        "<span class='a " + (it.dir === "in" ? "in'>+" : "out'>−") + MK.moneyC(it.cents) + "</span>";
+      var rm = document.createElement("button");
+      rm.type = "button"; rm.textContent = "✕"; rm.title = "Remove entry";
+      rm.addEventListener("click", function () { remove(it); });
+      el.appendChild(rm);
+      box.appendChild(el);
+    });
+  }
+  $("month").addEventListener("input", render);
+
+  /* ---------- logo ---------- */
+  $("logo-pick").addEventListener("click", function () { $("logo-file").click(); });
+  $("logo-file").addEventListener("change", function () {
+    var f = $("logo-file").files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      var img = new Image();
+      img.onerror = function () { $("pdf-status").textContent = "That logo couldn't be read — try a PNG or JPG."; };
+      img.onload = function () {
+        var cv = document.createElement("canvas");
+        var sc = Math.min(1, 600 / img.width);
+        cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        logoData = cv.toDataURL("image/png");
+        logoRatio = cv.width / cv.height;
+        $("logo-thumb").src = logoData; $("logo-thumb").style.display = "block";
+        try { localStorage.setItem("mk.cash.logo", logoData); localStorage.setItem("mk.cash.biz", $("biz").value); } catch (e) {}
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(f);
+  });
+
+  /* ---------- the statement ---------- */
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  $("pdf").addEventListener("click", function () {
+    var list = monthItems();
+    if (!list.length) { $("pdf-status").textContent = "Nothing recorded this month yet."; $("pdf-status").className = "note hint-err"; return; }
+    var t = totals(list);
+    var m = $("month").value;
+    var monthName = MONTHS[parseInt(m.slice(5), 10) - 1] + " " + m.slice(0, 4);
+    var biz = $("biz").value.trim() || "My business";
+
+    var p = MK.pdfStart("Monthly cash statement", [monthName, biz]);
+    if (logoData) {
+      var lh = 14, lw = Math.min(52, lh * logoRatio);
+      if (lw === 52) lh = lw / logoRatio;
+      p.doc.addImage(logoData, "PNG", p.W - p.M - lw, 30, lw, lh);
+    }
+    p.h("The month at a glance");
+    p.kv("Money in", MK.moneyC(t.inC));
+    p.kv("Money out", MK.moneyC(t.outC));
+    p.kv("What's left", (t.netC < 0 ? "−" : "") + MK.moneyC(Math.abs(t.netC)));
+    p.h("Every movement, in order");
+    var cD = p.M, cWhat = p.M + 24, cIn = p.W - p.M - 34, cOut = p.W - p.M;
+    function head() {
+      p.doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(92, 106, 133);
+      p.doc.text("DATE", cD, p.y); p.doc.text("DESCRIPTION", cWhat, p.y);
+      p.doc.text("IN", cIn, p.y, { align: "right" }); p.doc.text("OUT", cOut, p.y, { align: "right" });
+      p.y += 2; p.doc.setDrawColor(27, 39, 64).setLineWidth(0.4); p.doc.line(p.M, p.y, p.W - p.M, p.y); p.y += 5;
+    }
+    head();
+    list.forEach(function (it) {
+      if (p.y > 276) { p.doc.addPage(); p.y = 22; head(); }
+      p.doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(27, 39, 64);
+      p.doc.text(it.date.slice(8) + "/" + it.date.slice(5, 7), cD, p.y);
+      var lines = p.doc.splitTextToSize(it.desc, 105);
+      p.doc.text(lines, cWhat, p.y);
+      if (it.dir === "in") {
+        p.doc.setTextColor(13, 122, 85);
+        p.doc.text(MK.moneyC(it.cents), cIn, p.y, { align: "right" });
+      } else {
+        p.doc.setTextColor(179, 64, 42);
+        p.doc.text(MK.moneyC(it.cents), cOut, p.y, { align: "right" });
+      }
+      p.y += lines.length * 4.6 + 2.2;
+      p.doc.setDrawColor(223, 230, 242).setLineWidth(0.2); p.doc.line(p.M, p.y - 1.4, p.W - p.M, p.y - 1.4);
+    });
+    p.y += 4; p.room(16);
+    p.doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(27, 39, 64);
+    p.doc.text("Total in: " + MK.moneyC(t.inC), p.M, p.y);
+    p.doc.text("Total out: " + MK.moneyC(t.outC), p.M + 62, p.y);
+    p.doc.text("Left: " + (t.netC < 0 ? "−" : "") + MK.moneyC(Math.abs(t.netC)), p.W - p.M, p.y, { align: "right" });
+    p.y += 8;
+    p.p("Recorded as it happened by the owner, entry by entry. Self-reported figures — not an audited statement.", true);
+    p.finish("cash-statement-" + m + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("Monthly cash statement - " + monthName + ". PDF attached."); };
+    $("pdf-status").textContent = "Statement for " + monthName + " downloaded ✓";
+    $("pdf-status").className = "note hint-ok";
+  });
+
+  $("wa-month").addEventListener("click", function () {
+    var t = totals(monthItems());
+    var m = $("month").value;
+    this.href = MK.waLink(($("biz").value.trim() || "My business") + " — " +
+      MONTHS[parseInt(m.slice(5), 10) - 1] + " " + m.slice(0, 4) + "\n" +
+      "Money in: " + MK.moneyC(t.inC) + "\nMoney out: " + MK.moneyC(t.outC) +
+      "\nWhat's left: " + (t.netC < 0 ? "−" : "") + MK.moneyC(Math.abs(t.netC)) +
+      "\n— kept on Makhie");
+  });
+
+  /* ---------- boot ---------- */
+  var now = new Date();
+  $("e-date").value = now.toISOString().slice(0, 10);
+  $("month").value = now.toISOString().slice(0, 7);
+  try {
+    var savedLogo = localStorage.getItem("mk.cash.logo");
+    if (savedLogo) {
+      logoData = savedLogo;
+      var probe = new Image();
+      probe.onload = function () { logoRatio = probe.width / probe.height; };
+      probe.src = savedLogo;
+      $("logo-thumb").src = savedLogo; $("logo-thumb").style.display = "block";
+    }
+    var savedBiz = localStorage.getItem("mk.cash.biz");
+    if (savedBiz) $("biz").value = savedBiz;
+  } catch (e) {}
+  $("biz").addEventListener("input", function () { try { localStorage.setItem("mk.cash.biz", $("biz").value); } catch (e) {} });
+})();
+</script>
+</body>
+</html>

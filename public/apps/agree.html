@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Deal Summary — Makhie</title>
+<meta name="description" content="Paste a WhatsApp agreement and Makhie turns it into a clear deal summary, an agreement, a quote and a payment request. Solving miscommunication, not paperwork.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  #paste { min-height: 130px; font-size: 13.5px; }
+  .deal { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 16px; }
+  .deal-head { background: var(--ink); color: #fff; font-weight: 800; letter-spacing: .14em; font-size: 12px;
+    padding: 10px 16px; }
+  .deal-row { display: grid; grid-template-columns: 130px 1fr; border-top: 1px solid var(--line); align-items: center; }
+  .deal-row label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--mute); padding: 0 14px; }
+  .deal-row input { border: 0; outline: none; padding: 11px 12px; font: 500 13.5px inherit; font-family: inherit;
+    color: var(--ink); background: transparent; width: 100%; }
+  .deal-row input:focus { background: var(--accent-soft); }
+  .deal-row.money input { font-weight: 700; }
+  .status-line { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); }
+  .outbtns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="agree.html">Agreements</a>
+      <a class="link" href="receipts.html">Receipts</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">WhatsApp Deal Summary</h1>
+    <p class="sub">Paste the WhatsApp conversation. Makhie pulls out the deal — price, deposit,
+    who buys materials, when it's done — so both sides hold the same summary. You're fixing
+    miscommunication, not making paperwork.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The conversation</h3>
+      <label class="f" for="paste">Paste the WhatsApp messages</label>
+      <textarea class="f" id="paste" placeholder="Hi bhuti yes I'll do the cupboards for 8500. You buy the handles. I need 4k deposit then balance when done."></textarea>
+      <div class="row">
+        <button class="btn" id="parse" type="button">Read the deal</button>
+        <button class="btn quiet mk-ai" id="ai-parse" type="button" style="display:none">✨ Read with AI</button>
+        <span class="note" id="parse-note"></span>
+      </div>
+
+      <div id="deal-box" style="display:none">
+        <div class="deal">
+          <div class="deal-head">DEAL SUMMARY</div>
+          <div class="deal-row"><label for="d-cust">Customer</label><input id="d-cust" placeholder="Customer name"></div>
+          <div class="deal-row"><label for="d-serv">Service</label><input id="d-serv" placeholder="What's being done"></div>
+          <div class="deal-row money"><label for="d-price">Price</label><input id="d-price" placeholder="R0"></div>
+          <div class="deal-row"><label for="d-mat">Materials</label><input id="d-mat" placeholder="Who supplies materials?"></div>
+          <div class="deal-row money"><label for="d-dep">Deposit</label><input id="d-dep" placeholder="R0"></div>
+          <div class="deal-row money"><label for="d-bal">Balance</label><input id="d-bal" placeholder="R0"></div>
+          <div class="deal-row"><label for="d-when">Completion</label><input id="d-when" placeholder="When is it done?"></div>
+          <div class="status-line" id="d-status" style="display:none"></div>
+        </div>
+        <p class="note" style="margin-top:8px">Everything is editable — fix anything Makhie misread.</p>
+      </div>
+    </div>
+
+    <div class="card" id="out-card" style="display:none">
+      <h3>Send it &amp; paper it</h3>
+      <p class="note">Both parties should hold the same words. Send the summary, then create the
+      papers you need from the same deal.</p>
+      <div class="outbtns">
+        <a class="btn wa" id="wa-send" target="_blank" rel="noopener">Share summary on WhatsApp</a>
+        <button class="btn quiet" id="copy-sum" type="button">Copy summary</button>
+      </div>
+      <div class="outbtns">
+        <button class="btn quiet" id="pdf-agree" type="button">Create agreement (PDF)</button>
+        <button class="btn quiet" id="pdf-quote" type="button">Create quote (PDF)</button>
+        <button class="btn quiet" id="pdf-pay" type="button">Create payment request (PDF)</button>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="out-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — conversations are read on your device and never uploaded.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- the parser ---------- */
+  // Money mentions: "R8 500", "8500", "4k", "R1,200.50" — with their position,
+  // so nearby words can classify them.
+  function findAmounts(t) {
+    var out = [], re = /r?\s?(\d{1,3}(?:[ ,]\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?\s?k?)(?!\d)/gi, m;
+    while ((m = re.exec(t))) {
+      var cents = MK.parseAmount(m[1]);
+      if (cents >= 1000) out.push({ cents: cents, at: m.index }); // ignore tiny numbers like "2 doors"
+    }
+    return out;
+  }
+  function near(t, at, words, span) {
+    var from = Math.max(0, at - (span || 40)), ctx = t.slice(from, at + 25).toLowerCase();
+    return words.some(function (w) { return ctx.indexOf(w) > -1; });
+  }
+  function parseDeal(raw) {
+    var t = raw.replace(/\s+/g, " ").trim();
+    var lower = t.toLowerCase();
+    var amounts = findAmounts(t);
+    var deal = { customer: "", service: "", priceC: 0, depositC: 0, balanceC: 0, materials: "", when: "" };
+
+    var depositAt = null, balanceAt = null;
+    amounts.forEach(function (a) {
+      if (!depositAt && near(t, a.at, ["deposit", "upfront", "advance", "to start", "before i start"])) { depositAt = a; deal.depositC = a.cents; }
+      else if (!balanceAt && near(t, a.at, ["balance", "rest", "remaining", "when done", "after", "on completion"])) { balanceAt = a; deal.balanceC = a.cents; }
+    });
+    // Exclude the deposit/balance mentions by identity, not value — a job
+    // whose price equals its deposit ("R2000 job, R2000 deposit") must still
+    // keep the price mention.
+    var rest = amounts.filter(function (a) { return a !== depositAt && a !== balanceAt; });
+    if (rest.length) deal.priceC = Math.max.apply(null, rest.map(function (a) { return a.cents; }));
+    else if (deal.depositC && deal.balanceC) deal.priceC = deal.depositC + deal.balanceC;
+    else if (deal.depositC && !deal.balanceC) deal.priceC = deal.depositC;
+    if (deal.priceC && deal.depositC && !deal.balanceC) deal.balanceC = Math.max(0, deal.priceC - deal.depositC);
+
+    var sm = lower.match(/(?:do|doing|build|building|make|making|fix|fixing|repair|repairing|paint|painting|install|installing|tile|tiling|weld|welding|sew|sewing|cater|catering(?: for)?|service)\s+(?:the |your |my |a )?([a-z][a-z\s]{2,32}?)(?=\s+for\b|\s+at\b|[.,!?]|$)/);
+    if (sm) deal.service = sm[1].trim().replace(/\s+(for|at)$/, "");
+    if (!deal.service) {
+      var km = lower.match(/\b(cupboards?|gate|fence|roof|geyser|plumbing|garden|kitchen|bathroom|wall|paving|tiles?|wiring|car|sofa|dress|uniforms?|cakes?|catering|braai stand|burglar bars?)\b/);
+      if (km) deal.service = km[1];
+    }
+
+    var matm = t.match(/([^.!?]*\b(?:you buy|i buy|you supply|i supply|customer (?:buys|supplies)|bring the|buy the|handles|materials?)\b[^.!?]*)/i);
+    if (matm) deal.materials = matm[1].trim();
+    if (/\byou buy|customer (buys|supplies)|you supply|bring the\b/i.test(deal.materials)) deal.materials = "Customer supplies: " + deal.materials.replace(/^.*?\b(?:you buy|you supply|customer (?:buys|supplies)|bring)\b\s*/i, "");
+
+    var wm = t.match(/\b((?:mon|tues|wednes|thurs|fri|satur|sun)day|tomorrow|today|next week|weekend|month end|end of (?:the )?month|\d{1,2}\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/i);
+    if (wm) deal.when = wm[1];
+
+    var nm = t.match(/^(?:hi|hello|hey|heita|sho)\s+([A-Z][a-z]+)\b/i) || t.match(/\bfor\s+([A-Z][a-z]{2,})\s*[.,]/);
+    if (nm && !/^(bhuti|sisi|boss|chief|my)$/i.test(nm[1])) deal.customer = nm[1];
+
+    return deal;
+  }
+
+  /* ---------- UI wiring ---------- */
+  function fmt(cents) { return cents ? MK.moneyC(cents) : ""; }
+  $("parse").addEventListener("click", function () {
+    var raw = $("paste").value.trim();
+    if (!raw) { $("parse-note").textContent = "Paste the conversation first."; return; }
+    var d = parseDeal(raw);
+    $("d-cust").value = d.customer;
+    $("d-serv").value = d.service ? d.service.charAt(0).toUpperCase() + d.service.slice(1) : "";
+    $("d-price").value = fmt(d.priceC);
+    $("d-mat").value = d.materials;
+    $("d-dep").value = fmt(d.depositC);
+    $("d-bal").value = fmt(d.balanceC);
+    $("d-when").value = d.when ? d.when.charAt(0).toUpperCase() + d.when.slice(1) : "";
+    $("deal-box").style.display = "block";
+    $("out-card").style.display = "block";
+    $("parse-note").textContent = "Check the summary — fix anything, then send it.";
+    refreshStatus();
+  });
+  // AI read: better on messy, slangy, multi-message chats. Falls back to the
+  // built-in reader on any failure; every field stays editable either way.
+  $("ai-parse").addEventListener("click", function () {
+    var raw = $("paste").value.trim(), btn = this;
+    if (!raw) { $("parse-note").textContent = "Paste the conversation first."; return; }
+    btn.disabled = true; btn.textContent = "Reading…";
+    MK.ai(
+      "Extract the deal from a South African WhatsApp conversation (may mix languages). Return ONLY strict JSON: " +
+      '{"customer":"","service":"","price_rand":0,"deposit_rand":0,"balance_rand":0,"materials":"","completion":""}. ' +
+      "Use 0 or empty string for anything not stated. Amounts as plain numbers in rand.",
+      raw
+    ).then(function (t) {
+      var j = JSON.parse(t.replace(/```json|```/g, "").trim());
+      $("d-cust").value = j.customer || "";
+      $("d-serv").value = j.service || "";
+      $("d-price").value = j.price_rand ? MK.moneyC(Math.round(j.price_rand * 100)) : "";
+      $("d-mat").value = j.materials || "";
+      $("d-dep").value = j.deposit_rand ? MK.moneyC(Math.round(j.deposit_rand * 100)) : "";
+      $("d-bal").value = j.balance_rand ? MK.moneyC(Math.round(j.balance_rand * 100)) : "";
+      $("d-when").value = j.completion || "";
+      $("deal-box").style.display = "block";
+      $("out-card").style.display = "block";
+      $("parse-note").textContent = "AI read the deal — check it, fix anything, then send.";
+      refreshStatus();
+    }).catch(function () {
+      $("parse-note").textContent = "AI couldn't read that — using the standard reader instead.";
+      $("parse").click();
+    }).then(function () { btn.disabled = false; btn.textContent = "✨ Read with AI"; });
+  });
+  ["d-price", "d-dep", "d-bal"].forEach(function (id) { $(id).addEventListener("input", refreshStatus); });
+  function refreshStatus() {
+    var dep = MK.parseAmount($("d-dep").value);
+    var st = $("d-status");
+    if (dep > 0) { st.style.display = "block"; st.textContent = "STATUS: DEPOSIT REQUIRED — " + MK.moneyC(dep) + " to start"; }
+    else st.style.display = "none";
+  }
+
+  function summaryText() {
+    var L = [];
+    L.push("DEAL SUMMARY (via Makhie)");
+    if ($("d-cust").value) L.push("Customer: " + $("d-cust").value);
+    if ($("d-serv").value) L.push("Service: " + $("d-serv").value);
+    if ($("d-price").value) L.push("Price: " + $("d-price").value);
+    if ($("d-mat").value) L.push("Materials: " + $("d-mat").value);
+    if ($("d-dep").value) L.push("Deposit: " + $("d-dep").value);
+    if ($("d-bal").value) L.push("Balance: " + $("d-bal").value);
+    if ($("d-when").value) L.push("Completion: " + $("d-when").value);
+    L.push("");
+    L.push("Reply YES if this is what we agreed.");
+    return L.join("\n");
+  }
+  $("wa-send").addEventListener("click", function () { this.href = MK.waLink(summaryText()); });
+  $("copy-sum").addEventListener("click", function () {
+    navigator.clipboard.writeText(summaryText()).then(function () {
+      $("copy-sum").textContent = "Copied ✓";
+      setTimeout(function () { $("copy-sum").textContent = "Copy summary"; }, 1600);
+    }).catch(function () { $("copy-sum").textContent = "Copy blocked"; });
+  });
+
+  /* ---------- papers ---------- */
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "wa-pdf") MK.shareLastPdf(summaryText());
+  });
+  function dealMeta() {
+    return {
+      cust: $("d-cust").value || "—", serv: $("d-serv").value || "—",
+      priceC: MK.parseAmount($("d-price").value), depC: MK.parseAmount($("d-dep").value),
+      balC: MK.parseAmount($("d-bal").value), mat: $("d-mat").value, when: $("d-when").value
+    };
+  }
+  function saveRec(kind, title, cents) {
+    MK.saveDoc(kind, title, cents, dealMeta()).then(function () {
+      $("out-note").textContent = "Saved to your Makhie records ✓";
+    }).catch(function () { $("out-note").textContent = "Made the PDF, but couldn't save the record."; });
+  }
+  var today = new Date().toISOString().slice(0, 10);
+
+  $("pdf-agree").addEventListener("click", function () {
+    var d = dealMeta();
+    var p = MK.pdfStart("Service agreement", [today]);
+    p.kv("Customer", d.cust); p.kv("Service", d.serv);
+    p.kv("Price", d.priceC ? MK.moneyC(d.priceC) : "—");
+    p.kv("Materials", d.mat || "—");
+    p.kv("Deposit", d.depC ? MK.moneyC(d.depC) : "—");
+    p.kv("Balance", d.balC ? MK.moneyC(d.balC) : "—");
+    p.kv("Completion", d.when || "—");
+    p.h("Agreed terms");
+    p.p("The work above will be done as described, for the price above. " +
+      (d.depC ? "Work starts once the deposit of " + MK.moneyC(d.depC) + " is received. " : "") +
+      (d.balC ? "The balance of " + MK.moneyC(d.balC) + " is payable on completion. " : "") +
+      "Both parties confirm this reflects what was agreed between them.");
+    p.y += 16; p.room(30);
+    p.doc.setDrawColor(27, 39, 64).setLineWidth(0.4);
+    p.doc.line(p.M, p.y, p.M + 62, p.y); p.doc.line(p.W - p.M - 62, p.y, p.W - p.M, p.y);
+    p.doc.setFontSize(9).setTextColor(92, 106, 133);
+    p.doc.text("Service provider", p.M, p.y + 5); p.doc.text("Customer", p.W - p.M - 62, p.y + 5);
+    p.finish("agreement-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    saveRec("agreement", "Agreement — " + d.serv + " (" + d.cust + ")", d.priceC);
+  });
+
+  $("pdf-quote").addEventListener("click", function () {
+    var d = dealMeta();
+    var p = MK.pdfStart("Quotation", [today, "Valid 14 days"]);
+    p.kv("Quoted to", d.cust); p.kv("Service", d.serv);
+    if (d.mat) p.kv("Materials", d.mat);
+    p.h("Amount");
+    p.kv("Quoted price", d.priceC ? MK.moneyC(d.priceC) : "—");
+    if (d.depC) p.kv("Deposit to book", MK.moneyC(d.depC));
+    if (d.when) p.kv("Timeline", d.when);
+    p.p("Accept this quote by replying YES on WhatsApp. Pay securely as arranged.", true);
+    p.finish("quote-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    saveRec("quote", "Quote — " + d.serv + " (" + d.cust + ")", d.priceC);
+  });
+
+  $("pdf-pay").addEventListener("click", function () {
+    var d = dealMeta();
+    var due = d.depC || d.balC || d.priceC;
+    var label = d.depC ? "Deposit" : (d.balC ? "Balance" : "Amount");
+    var p = MK.pdfStart("Payment request", [today]);
+    p.kv("From", d.cust); p.kv("For", d.serv);
+    p.h("Amount due");
+    p.doc.setFont("helvetica", "bold").setFontSize(26).setTextColor(27, 39, 64);
+    p.doc.text(MK.moneyC(due), p.M, p.y + 4); p.y += 14;
+    p.kv("This payment is", label + (d.depC ? " — work starts once it lands" : ""));
+    if (d.balC && d.depC) p.kv("Then remaining", MK.moneyC(d.balC) + " on completion");
+    p.p("Pay securely using the details your service provider sends you. Keep this request with your proof of payment.", true);
+    p.finish("payment-request-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    saveRec("payment_request", "Payment request — " + d.serv + " (" + d.cust + ")", due);
+  });
+})();
+</script>
+</body>
+</html>

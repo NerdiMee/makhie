@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Company Registration Helper — Makhie</title>
+<meta name="description" content="Register your company the quick way: Makhie collects everything CIPC's BizPortal asks for, so the official registration takes minutes, not weekends.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .steps-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
+  .step-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; color: var(--mute); }
+  .step-box b { display: block; color: var(--ink); font-size: 13px; margin-bottom: 3px; }
+  .privacy { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 12px 16px; font-size: 12.5px; color: var(--accent-ink); margin-top: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="company.html">Company Registration Helper</a>
+      <a class="link" href="checklist.html">Paperwork Checklist</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Company Registration Helper</h1>
+    <p class="sub">Registering a company in South Africa happens on CIPC's official
+    <b>BizPortal</b> — and it's genuinely quick once you arrive with everything ready. Makhie
+    collects the answers first, hands you a clean pack, and walks you in the front door.</p>
+    <div class="steps-strip">
+      <div class="step-box"><b>1 · Answer here</b>Names, directors, address — five minutes.</div>
+      <div class="step-box"><b>2 · Get your pack</b>A PDF with every answer, ready to copy in.</div>
+      <div class="step-box"><b>3 · Register on BizPortal</b>CIPC's official site — company + tax number, usually same day.</div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Your company</h3>
+      <label class="f" for="c-n1">Proposed name (first choice)</label>
+      <input class="f" id="c-n1" placeholder="e.g. Nomsa's Catering (Pty) Ltd">
+      <label class="f" for="c-n2">Backup names (in case the first is taken)</label>
+      <input class="f" id="c-n2" placeholder="Second choice">
+      <input class="f" id="c-n3" placeholder="Third choice" style="margin-top:8px">
+      <label class="f" for="c-what">What will the company do?</label>
+      <input class="f" id="c-what" placeholder="e.g. Catering and events services">
+      <label class="f" for="c-addr">Business address</label>
+      <input class="f" id="c-addr" placeholder="Street, area, city, code">
+      <label class="f" for="c-email">Company email</label>
+      <input class="f" id="c-email" type="email" placeholder="you@example.com">
+      <label class="f" for="c-phone">Company phone</label>
+      <input class="f" id="c-phone" placeholder="072 000 0000">
+
+      <h3 style="margin-top:22px">Director(s)</h3>
+      <p class="note">A private company needs at least one director. BizPortal will ask for each
+      director's ID number and a certified ID copy — have them ready.</p>
+      <label class="f" for="c-dir1">Director 1 — full name as per ID</label>
+      <input class="f" id="c-dir1" placeholder="Full names and surname">
+      <label class="f" for="c-dir1c">Director 1 — cell &amp; email</label>
+      <input class="f" id="c-dir1c" placeholder="072 000 0000 · name@example.com">
+      <label class="f" for="c-dir2">Director 2 (optional)</label>
+      <input class="f" id="c-dir2" placeholder="Full names and surname">
+
+      <div class="privacy">Makhie does <b>not</b> ask for or store ID numbers — those go straight
+      into BizPortal only. Your pack lists what to have on hand.</div>
+
+      <div class="row">
+        <button class="btn" id="make-pack" type="button">Create my registration pack (PDF)</button>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+    </div>
+
+    <div class="card">
+      <h3>Then register — officially, quickly</h3>
+      <p>BizPortal is CIPC's own fast lane: company registration, name reservation, tax number,
+      B-BBEE certificate and even a business bank account in one flow. Standard cost is modest
+      and most registrations complete the same day.</p>
+      <div class="row">
+        <a class="btn" href="https://www.bizportal.gov.za" target="_blank" rel="noopener">Open BizPortal (CIPC official) →</a>
+      </div>
+      <p class="note" style="margin-top:14px">Have ready for every director: ID number, certified
+      ID copy (or smart-card scan), cellphone and email. Payment is by card on the portal.</p>
+      <h3 style="margin-top:22px">After you're registered</h3>
+      <p class="note" style="margin-top:6px">Come back to Makhie: <a href="checklist.html">What Do
+      I Need?</a> builds your supplier paperwork list, and <a href="evidence.html">Prove My
+      Business</a> starts your evidence pack with your new registration number on top.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie prepares; CIPC registers. BizPortal is the official government channel — Makhie is not affiliated with CIPC.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  $("make-pack").addEventListener("click", function () {
+    if (!$("c-n1").value.trim() || !$("c-dir1").value.trim()) {
+      $("status").textContent = "At least the first-choice name and Director 1 are needed.";
+      $("status").className = "note hint-err"; return;
+    }
+    var today = new Date().toISOString().slice(0, 10);
+    var p = MK.pdfStart("CIPC registration pack", [today, "For use on bizportal.gov.za"]);
+    p.h("Company names (in order of preference)");
+    p.kv("First choice", $("c-n1").value);
+    if ($("c-n2").value) p.kv("Second choice", $("c-n2").value);
+    if ($("c-n3").value) p.kv("Third choice", $("c-n3").value);
+    p.h("Company details");
+    p.kv("Main business", $("c-what").value || "—");
+    p.kv("Address", $("c-addr").value || "—");
+    p.kv("Email", $("c-email").value || "—");
+    p.kv("Phone", $("c-phone").value || "—");
+    p.h("Directors");
+    p.kv("Director 1", $("c-dir1").value);
+    if ($("c-dir1c").value) p.kv("Contact", $("c-dir1c").value);
+    if ($("c-dir2").value) p.kv("Director 2", $("c-dir2").value);
+    p.h("Bring to BizPortal (not stored by Makhie)");
+    p.p("For each director: SA ID number, certified ID copy or smart-card scan, cellphone number and email address. A bank card for the registration fee. Choose 'Company Registration' on bizportal.gov.za, paste the answers above, and follow the steps — most registrations finish the same day, including your tax number.");
+    p.finish("cipc-pack-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("CIPC registration pack for " + $("c-n1").value + " - PDF attached."); };
+    $("status").textContent = "Pack downloaded ✓ — now open BizPortal and copy it in.";
+    $("status").className = "note hint-ok";
+    MK.saveDoc("company_pack", "CIPC pack — " + $("c-n1").value, 0, {
+      names: [$("c-n1").value, $("c-n2").value, $("c-n3").value].filter(Boolean),
+      what: $("c-what").value, addr: $("c-addr").value,
+      email: $("c-email").value, phone: $("c-phone").value,
+      directors: [$("c-dir1").value, $("c-dir2").value].filter(Boolean)
+    }).catch(function () {});
+  });
+})();
+</script>
+</body>
+</html>

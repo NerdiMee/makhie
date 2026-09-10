@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loans &amp; Bonds — Makhie</title>
+<meta name="description" content="Three loan calculators in one place: loan repayments, the true monthly cost of a home loan, and the rental yield of a property.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="payplan.html">Repayment Schedule</a>
+      <a class="link" href="loantrack.html">Money Owed</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Loans &amp; Bonds</h1>
+    <p class="sub">What a loan costs per month, what a home loan really costs once the extras
+    join it, and what a rental property earns — all before you sign anything.</p>
+  </div>
+
+  <div style="margin-top:26px; display:flex; gap:10px; flex-wrap:wrap">
+    <button class="btn" id="tab-loan" type="button">Loan repayment</button>
+    <button class="btn quiet" id="tab-bond" type="button">Home loan</button>
+    <button class="btn quiet" id="tab-yield" type="button">Rental yield</button>
+  </div>
+
+  <div class="grid2" id="sec-loan" style="margin-top:22px">
+    <div class="card">
+      <h3>The loan</h3>
+      <label class="f" for="l-amt">Loan amount</label>
+      <input class="f" id="l-amt" placeholder="R10 000" value="R10 000">
+      <label class="f" for="l-rate">Interest rate (% per year)</label>
+      <input class="f" id="l-rate" type="number" min="0" step="0.1" value="24">
+      <label class="f" for="l-months">Pay back over (months)</label>
+      <input class="f" id="l-months" type="number" min="1" step="1" value="12">
+    </div>
+    <div class="card">
+      <h3>What it costs</h3>
+      <div class="res-cap">Monthly repayment</div>
+      <div class="res-big" id="l-monthly">—</div>
+      <div style="margin-top:14px">
+        <div class="res-row"><span>Total you pay back</span><b id="l-total">—</b></div>
+        <div class="res-row"><span>Of which interest</span><b id="l-interest">—</b></div>
+        <div class="res-row"><span>Interest as share of loan</span><b id="l-share">—</b></div>
+      </div>
+      <p class="disc">Reducing-balance calculation, the way banks and most lenders charge.
+      Estimates only — the lender's quote is the number that counts. Not financial advice.</p>
+    </div>
+  </div>
+
+  <div class="grid2" id="sec-bond" style="margin-top:22px; display:none">
+    <div class="card">
+      <h3>The home loan</h3>
+      <label class="f" for="b-price">Property price</label>
+      <input class="f" id="b-price" placeholder="R1 200 000" value="R1 200 000">
+      <label class="f" for="b-dep">Deposit</label>
+      <input class="f" id="b-dep" placeholder="R120 000" value="R120 000">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="b-rate">Interest rate (% per year)</label>
+          <input class="f" id="b-rate" type="number" min="0" step="0.1" value="11">
+        </div>
+        <div>
+          <label class="f" for="b-years">Term (years)</label>
+          <select class="f" id="b-years">
+            <option value="20" selected>20 years</option>
+            <option value="25">25 years</option>
+            <option value="30">30 years</option>
+            <option value="10">10 years</option>
+          </select>
+        </div>
+      </div>
+      <label class="f" for="b-extras">Monthly rates, levies &amp; insurance (optional)</label>
+      <input class="f" id="b-extras" placeholder="R2 500">
+      <p class="disc">Reducing-balance estimate at a fixed rate. Banks quote around prime and it
+      moves — get the real quote before you commit. Once-off costs (transfer duty, attorney and
+      bond registration fees) are on top of this. Not financial advice.</p>
+    </div>
+    <div class="card">
+      <h3>Per month</h3>
+      <div class="res-cap">Bond repayment</div>
+      <div class="res-big" id="b-bond">—</div>
+      <div style="margin-top:14px">
+        <div class="res-row"><span>+ Rates, levies &amp; insurance</span><b id="b-xtr">—</b></div>
+        <div class="res-row"><span><b>True monthly cost</b></span><b id="b-true">—</b></div>
+        <div class="res-row"><span>Loan amount (after deposit)</span><b id="b-loan">—</b></div>
+        <div class="res-row"><span>Total repaid over the term</span><b id="b-total">—</b></div>
+        <div class="res-row"><span>Of which interest</span><b id="b-interest">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2" id="sec-yield" style="margin-top:22px; display:none">
+    <div class="card">
+      <h3>The property</h3>
+      <label class="f" for="y-price">Property price (all-in cost)</label>
+      <input class="f" id="y-price" placeholder="R850 000" value="R850 000">
+      <label class="f" for="y-rent">Monthly rent it earns</label>
+      <input class="f" id="y-rent" placeholder="R7 500" value="R7 500">
+      <label class="f" for="y-costs">Monthly costs (levies, rates, insurance, management)</label>
+      <input class="f" id="y-costs" placeholder="R1 800" value="R1 800">
+      <label class="f" for="y-vacancy">Vacancy allowance (weeks empty per year)</label>
+      <input class="f" id="y-vacancy" type="number" min="0" max="52" step="1" value="2">
+      <p class="disc">Rule of thumb: gross yield above ~8% starts earning its keep in SA; below
+      that you're mostly betting on price growth. Estimates only — not financial advice.</p>
+    </div>
+    <div class="card">
+      <h3>The yield</h3>
+      <div class="res-cap">Net yield (after costs &amp; vacancy)</div>
+      <div class="res-big" id="y-net">—</div>
+      <div style="margin-top:14px">
+        <div class="res-row"><span>Gross yield</span><b id="y-gross">—</b></div>
+        <div class="res-row"><span>Rent collected per year</span><b id="y-annual">—</b></div>
+        <div class="res-row"><span>Costs per year</span><b id="y-costsyr">—</b></div>
+        <div class="res-row"><span>Net income per year</span><b id="y-netinc">—</b></div>
+        <div class="res-row"><span>Net income per month</span><b id="y-monthly">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:18px">Lending to someone? Track it in
+  <a href="loantrack.html">Loan Track</a> and put it in writing with
+  <a href="agree.html">What Did We Agree?</a></p>
+
+  <footer class="site">Makhie — calculations run on your device.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- tabs ---------- */
+  var TABS = [["tab-loan", "sec-loan"], ["tab-bond", "sec-bond"], ["tab-yield", "sec-yield"]];
+  function show(sec) {
+    TABS.forEach(function (t) {
+      var on = t[1] === sec;
+      $(t[0]).className = on ? "btn" : "btn quiet";
+      $(t[1]).style.display = on ? "" : "none";
+    });
+  }
+  TABS.forEach(function (t) {
+    $(t[0]).addEventListener("click", function () { show(t[1]); });
+  });
+  var hash = location.hash.replace("#", "");
+  show(hash === "bond" ? "sec-bond" : hash === "yield" ? "sec-yield" : "sec-loan");
+
+  /* ---------- loan repayment ---------- */
+  function calcLoan() {
+    var L = MK.parseAmount($("l-amt").value) / 100;
+    var yr = parseFloat($("l-rate").value); yr = isFinite(yr) && yr >= 0 ? yr : 0;
+    var n = parseInt($("l-months").value, 10); n = isFinite(n) && n > 0 ? n : 0;
+    if (!L || !n) { ["l-monthly","l-total","l-interest","l-share"].forEach(function (id) { $(id).textContent = "—"; }); return; }
+    var r = yr / 100 / 12;
+    var pay = r > 0 ? L * r / (1 - Math.pow(1 + r, -n)) : L / n;
+    var total = pay * n;
+    $("l-monthly").textContent = MK.moneyC(Math.round(pay * 100));
+    $("l-total").textContent = MK.moneyC(Math.round(total * 100));
+    $("l-interest").textContent = MK.moneyC(Math.round((total - L) * 100));
+    $("l-share").textContent = (100 * (total - L) / L).toFixed(1) + "%";
+  }
+  ["l-amt","l-rate","l-months"].forEach(function (id) { $(id).addEventListener("input", calcLoan); });
+  calcLoan();
+
+  /* ---------- home loan (bond) ---------- */
+  function calcBond() {
+    var price = MK.parseAmount($("b-price").value) / 100;
+    var dep = MK.parseAmount($("b-dep").value) / 100;
+    var yr = parseFloat($("b-rate").value); yr = isFinite(yr) && yr >= 0 ? yr : 0;
+    var n = parseInt($("b-years").value, 10) * 12;
+    var extras = MK.parseAmount($("b-extras").value) / 100;
+    var L = Math.max(0, price - dep);
+    if (!L || !n) { ["b-bond","b-xtr","b-true","b-loan","b-total","b-interest"].forEach(function (id) { $(id).textContent = "—"; }); return; }
+    var r = yr / 100 / 12;
+    var pay = r > 0 ? L * r / (1 - Math.pow(1 + r, -n)) : L / n;
+    $("b-bond").textContent = MK.moneyC(Math.round(pay * 100));
+    $("b-xtr").textContent = MK.moneyC(Math.round(extras * 100));
+    $("b-true").textContent = MK.moneyC(Math.round((pay + extras) * 100));
+    $("b-loan").textContent = MK.moneyC(Math.round(L * 100));
+    $("b-total").textContent = MK.moneyC(Math.round(pay * n * 100));
+    $("b-interest").textContent = MK.moneyC(Math.round((pay * n - L) * 100));
+  }
+  ["b-price","b-dep","b-rate","b-years","b-extras"].forEach(function (id) { $(id).addEventListener("input", calcBond); });
+  calcBond();
+
+  /* ---------- rental yield ---------- */
+  function calcYield() {
+    var price = MK.parseAmount($("y-price").value) / 100;
+    var rent = MK.parseAmount($("y-rent").value) / 100;
+    var costs = MK.parseAmount($("y-costs").value) / 100;
+    var vacW = parseFloat($("y-vacancy").value); vacW = isFinite(vacW) && vacW >= 0 ? Math.min(52, vacW) : 0;
+    if (!price || !rent) { ["y-net","y-gross","y-annual","y-costsyr","y-netinc","y-monthly"].forEach(function (id) { $(id).textContent = "—"; }); return; }
+    var annualRent = rent * 12 * (1 - vacW / 52);
+    var annualCosts = costs * 12;
+    var netIncome = annualRent - annualCosts;
+    $("y-gross").textContent = (100 * annualRent / price).toFixed(2) + "%";
+    $("y-net").textContent = (100 * netIncome / price).toFixed(2) + "%";
+    $("y-annual").textContent = MK.moneyC(Math.round(annualRent * 100));
+    $("y-costsyr").textContent = MK.moneyC(Math.round(annualCosts * 100));
+    var neg = netIncome < 0 ? "−" : "";
+    $("y-netinc").textContent = neg + MK.moneyC(Math.round(Math.abs(netIncome) * 100));
+    $("y-monthly").textContent = neg + MK.moneyC(Math.round(Math.abs(netIncome / 12) * 100));
+  }
+  ["y-price","y-rent","y-costs","y-vacancy"].forEach(function (id) { $(id).addEventListener("input", calcYield); });
+  calcYield();
+})();
+</script>
+</body>
+</html>

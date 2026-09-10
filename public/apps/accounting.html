@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple Accounting — Makhie</title>
+<meta name="description" content="Categorised income and expenses, a monthly profit line, a category pie, and a clean management-accounts PDF. Shares one book with your cashbook.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { padding: 9px 18px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .seg button.in.on { background: var(--ok); color: #fff; }
+  .seg button.out.on { background: #b3402a; color: #fff; }
+  .pl { margin-top: 8px; }
+  .pl-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .pl-row b { font-variant-numeric: tabular-nums; }
+  .pl-row.total { border-top: 2px solid var(--ink); font-weight: 800; font-size: 15px; }
+  .pl-row.profit b.pos { color: var(--ok); } .pl-row.profit b.neg { color: #b3402a; }
+  .pl-head { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin-top: 14px; }
+  #chart-box { max-width: 340px; margin: 10px auto 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="cashbook.html">Cashbook</a>
+      <a class="link" href="dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Simple Accounting</h1>
+    <p class="sub">The cashbook's grown-up sibling: every rand categorised, a real profit line
+    per month, and a management-accounts PDF a bank can read. One book — entries here and in the
+    cashbook are the same money.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Record it, categorised</h3>
+      <div class="row" style="margin-top:6px">
+        <div class="seg">
+          <button class="in on" id="t-in" type="button">Money in</button>
+          <button class="out" id="t-out" type="button">Money out</button>
+        </div>
+        <select class="f" id="e-cat" style="flex:1"></select>
+      </div>
+      <label class="f" for="e-desc">What was it?</label>
+      <input class="f" id="e-desc" placeholder="e.g. Stock from XYZ Wholesalers">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="e-amt">Amount</label>
+          <input class="f" id="e-amt" placeholder="R850" inputmode="decimal">
+        </div>
+        <div>
+          <label class="f" for="e-date">Date</label>
+          <input class="f" id="e-date" type="date">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="e-add" type="button">Add entry</button>
+        <span class="note" id="e-status"></span>
+      </div>
+      <div id="chart-box"><canvas id="ch-cat"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+        <h3>Income statement</h3>
+        <input class="f" id="month" type="month" style="width:auto">
+      </div>
+      <div class="pl" id="pl"><p class="note" style="margin-top:10px">No entries this month yet.</p></div>
+      <div class="row">
+        <button class="btn" id="pdf" type="button">Management accounts (PDF)</button>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="pdf-status" style="margin-top:8px"></p>
+      <p class="disc">Self-reported management accounts, not audited statements — and honest about
+      it, which is what makes them credible.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — one book with your cashbook; private on your device or in your account.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script src="../assets/vendor/chart.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb, cloud = false, items = [], dir = "in", chart = null;
+  var CATS = {
+    "in": ["Sales", "Services", "Deposits received", "Other income"],
+    out: ["Stock & materials", "Transport & fuel", "Rent", "Wages & helpers", "Airtime & data", "Equipment", "Bank & fees", "Other expense"]
+  };
+
+  function localItems() { try { return JSON.parse(localStorage.getItem("mk.cash") || "[]"); } catch (e) { return []; } }
+  function saveLocal() { try { localStorage.setItem("mk.cash", JSON.stringify(items)); } catch (e) {} }
+  function monthOf(d) { return String(d).slice(0, 7); }
+  function fillCats() {
+    $("e-cat").innerHTML = CATS[dir].map(function (c) { return "<option>" + c + "</option>"; }).join("");
+  }
+  $("t-in").addEventListener("click", function () { dir = "in"; this.classList.add("on"); $("t-out").classList.remove("on"); fillCats(); });
+  $("t-out").addEventListener("click", function () { dir = "out"; this.classList.add("on"); $("t-in").classList.remove("on"); fillCats(); });
+
+  /* Same store as the cashbook (kind 'cashflow'); this view adds categories. */
+  MK.onAuth(function (u) {
+    cloud = !!(u && !u.demo && sb);
+    if (cloud) {
+      sb.from("makhie_documents").select("id,title,amount_cents,data,created_at")
+        .eq("kind", "cashflow").order("created_at", { ascending: true }).limit(2000)
+        .then(function (r) {
+          if (r.error) { cloud = false; items = localItems(); render(); return; }
+          items = r.data.map(function (d) {
+            return { id: d.id, dir: d.data.dir || "in", desc: d.title, cents: d.amount_cents,
+              date: d.data.date || d.created_at.slice(0, 10), cat: d.data.cat || "" };
+          });
+          render();
+        });
+    } else { items = localItems(); render(); }
+  });
+
+  $("e-add").addEventListener("click", function () {
+    var desc = $("e-desc").value.trim(), cents = MK.parseAmount($("e-amt").value), date = $("e-date").value;
+    if (!desc || !cents || !date) { $("e-status").textContent = "Description, amount and date — all three."; $("e-status").className = "note hint-err"; return; }
+    var it = { dir: dir, desc: desc, cents: cents, date: date, cat: $("e-cat").value };
+    var done = function () {
+      $("e-desc").value = ""; $("e-amt").value = "";
+      $("e-status").textContent = "Recorded ✓"; $("e-status").className = "note hint-ok";
+      $("month").value = monthOf(date);
+      render();
+    };
+    if (cloud) {
+      sb.from("makhie_documents").insert({
+        user_id: MK.user().id, kind: "cashflow", title: desc, amount_cents: cents,
+        data: { dir: dir, date: date, cat: it.cat }
+      }).select("id").single().then(function (r) {
+        if (r.error) throw r.error;
+        it.id = r.data.id; items.push(it); done();
+      }).catch(function () { $("e-status").textContent = "Couldn't save online — try again."; $("e-status").className = "note hint-err"; });
+    } else { it.id = MK.uid(8); items.push(it); saveLocal(); done(); }
+  });
+
+  function monthItems() {
+    var m = $("month").value;
+    return items.filter(function (i) { return monthOf(i.date) === m; });
+  }
+  function groupBy(list, d2) {
+    var g = {};
+    list.filter(function (i) { return i.dir === d2; }).forEach(function (i) {
+      var c = i.cat || (d2 === "in" ? "Other income" : "Other expense");
+      g[c] = (g[c] || 0) + i.cents;
+    });
+    return g;
+  }
+  function render() {
+    var list = monthItems();
+    var inc = groupBy(list, "in"), exp = groupBy(list, "out");
+    var incT = 0, expT = 0;
+    Object.keys(inc).forEach(function (k) { incT += inc[k]; });
+    Object.keys(exp).forEach(function (k) { expT += exp[k]; });
+    var pl = $("pl");
+    if (!list.length) { pl.innerHTML = "<p class='note' style='margin-top:10px'>No entries this month yet.</p>"; drawChart(exp); return; }
+    var html = "<div class='pl-head'>Income</div>";
+    Object.keys(inc).sort(function (a, b) { return inc[b] - inc[a]; }).forEach(function (k) {
+      html += "<div class='pl-row'><span>" + MK.esc(k) + "</span><b>" + MK.moneyC(inc[k]) + "</b></div>";
+    });
+    html += "<div class='pl-row total'><span>Total income</span><b>" + MK.moneyC(incT) + "</b></div>";
+    html += "<div class='pl-head'>Expenses</div>";
+    Object.keys(exp).sort(function (a, b) { return exp[b] - exp[a]; }).forEach(function (k) {
+      html += "<div class='pl-row'><span>" + MK.esc(k) + "</span><b>" + MK.moneyC(exp[k]) + "</b></div>";
+    });
+    html += "<div class='pl-row total'><span>Total expenses</span><b>" + MK.moneyC(expT) + "</b></div>";
+    var prof = incT - expT;
+    html += "<div class='pl-row total profit'><span>Profit for the month</span><b class='" + (prof >= 0 ? "pos" : "neg") + "'>" +
+      (prof < 0 ? "−" : "") + MK.moneyC(Math.abs(prof)) + "</b></div>";
+    pl.innerHTML = html;
+    drawChart(exp);
+  }
+  function drawChart(exp) {
+    var keys = Object.keys(exp).sort(function (a, b) { return exp[b] - exp[a]; });
+    if (chart) { chart.destroy(); chart = null; }
+    if (!keys.length) return;
+    chart = new Chart($("ch-cat"), {
+      type: "pie",
+      data: { labels: keys, datasets: [{ data: keys.map(function (k) { return exp[k] / 100; }),
+        backgroundColor: ["#1E5FD6", "#0E7490", "#0d7a55", "#9a4d00", "#6d5bd0", "#b3402a", "#3a7ca5", "#999"] }] },
+      options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 11, font: { size: 10.5 } } },
+        title: { display: true, text: "Where the money goes", font: { size: 12 } } } }
+    });
+  }
+  $("month").addEventListener("input", render);
+
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  $("pdf").addEventListener("click", function () {
+    var list = monthItems();
+    if (!list.length) { $("pdf-status").textContent = "Nothing recorded this month yet."; $("pdf-status").className = "note hint-err"; return; }
+    var m = $("month").value;
+    var monthName = MONTHS[parseInt(m.slice(5), 10) - 1] + " " + m.slice(0, 4);
+    var inc = groupBy(list, "in"), exp = groupBy(list, "out");
+    var incT = 0, expT = 0;
+    Object.keys(inc).forEach(function (k) { incT += inc[k]; });
+    Object.keys(exp).forEach(function (k) { expT += exp[k]; });
+    var biz = (MK.biz().name || "My business");
+    var p = MK.pdfStart("Management accounts", [monthName, biz]);
+    p.h("Income");
+    Object.keys(inc).sort(function (a, b) { return inc[b] - inc[a]; }).forEach(function (k) { p.kv(k, MK.moneyC(inc[k])); });
+    p.kv("Total income", MK.moneyC(incT));
+    p.h("Expenses");
+    Object.keys(exp).sort(function (a, b) { return exp[b] - exp[a]; }).forEach(function (k) { p.kv(k, MK.moneyC(exp[k])); });
+    p.kv("Total expenses", MK.moneyC(expT));
+    p.h("Result");
+    var prof = incT - expT;
+    p.kv("Profit for the month", (prof < 0 ? "−" : "") + MK.moneyC(Math.abs(prof)));
+    p.p("Prepared from the owner's categorised cashbook on Makhie. Self-reported management accounts — not audited financial statements.", true);
+    p.finish("accounts-" + m + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("Management accounts — " + monthName + " (" + biz + "). PDF attached."); };
+    $("pdf-status").textContent = "Accounts for " + monthName + " downloaded ✓";
+    $("pdf-status").className = "note hint-ok";
+  });
+
+  var now = new Date();
+  $("e-date").value = now.toISOString().slice(0, 10);
+  $("month").value = now.toISOString().slice(0, 7);
+  fillCats();
+})();
+</script>
+</body>
+</html>

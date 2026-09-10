@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rent vs Buy — Makhie</title>
+<meta name="description" content="Rent or buy? Compare the true cost of both over the years you'd actually stay — including the equity buying leaves you with.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .verdict { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 14px 16px; margin-top: 14px; font-size: 14px; font-weight: 700; color: var(--accent-ink); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="bondcalc.html">Home Loan Calculator</a>
+      <a class="link" href="propertyroi.html">Property Return</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Rent vs Buy</h1>
+    <p class="sub">Renting isn't "wasting money" and buying isn't automatically winning — it
+    depends on the numbers and how long you stay. Put yours in.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Your two options</h3>
+      <label class="f" for="rent">Renting: monthly rent today</label>
+      <input class="f" id="rent" placeholder="R8 500" value="R8 500">
+      <label class="f" for="esc">Annual rent increase (%)</label>
+      <input class="f" id="esc" type="number" min="0" step="0.5" value="7">
+      <label class="f" for="price">Buying: property price</label>
+      <input class="f" id="price" placeholder="R1 100 000" value="R1 100 000">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="dep">Deposit</label>
+          <input class="f" id="dep" placeholder="R110 000" value="R110 000">
+        </div>
+        <div>
+          <label class="f" for="rate">Bond rate (%)</label>
+          <input class="f" id="rate" type="number" min="0" step="0.1" value="11">
+        </div>
+      </div>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="own">Owner costs / month (rates, levies, upkeep)</label>
+          <input class="f" id="own" placeholder="R3 000" value="R3 000">
+        </div>
+        <div>
+          <label class="f" for="grow">Property growth (%/yr)</label>
+          <input class="f" id="grow" type="number" min="0" step="0.5" value="5">
+        </div>
+      </div>
+      <label class="f" for="years">How long will you stay? (years)</label>
+      <input class="f" id="years" type="number" min="1" max="30" step="1" value="7">
+      <p class="disc">Buying assumes a 20-year bond and counts once-off buying costs (~8% of
+      price) against you, and the equity you build plus growth for you. Many real-life factors
+      sit outside this sum — treat it as a first look, not financial advice.</p>
+    </div>
+    <div class="card">
+      <h3>After <span id="r-years">7</span> years</h3>
+      <div class="verdict" id="verdict">—</div>
+      <div style="margin-top:14px">
+        <div class="res-row"><span>Total paid renting</span><b id="r-rentcost">—</b></div>
+        <div class="res-row"><span>Total paid owning (bond + costs + buying fees)</span><b id="r-owncost">—</b></div>
+        <div class="res-row"><span>Equity you'd own in the home</span><b id="r-equity">—</b></div>
+        <div class="res-row"><span>Estimated property value then</span><b id="r-value">—</b></div>
+        <div class="res-row win"><span>Owning: net position vs renting</span><b id="r-net">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — calculations run on your device. Estimates, not financial advice.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function calc() {
+    var rent0 = MK.parseAmount($("rent").value) / 100;
+    var esc = (parseFloat($("esc").value) || 0) / 100;
+    var price = MK.parseAmount($("price").value) / 100;
+    var dep = MK.parseAmount($("dep").value) / 100;
+    var yr = (parseFloat($("rate").value) || 0) / 100;
+    var own = MK.parseAmount($("own").value) / 100;
+    var grow = (parseFloat($("grow").value) || 0) / 100;
+    var years = Math.max(1, Math.min(30, parseInt($("years").value, 10) || 1));
+    $("r-years").textContent = years;
+    if (!rent0 || !price) { ["verdict","r-rentcost","r-owncost","r-equity","r-value","r-net"].forEach(function (id) { $(id).textContent = "—"; }); return; }
+
+    // Renting: rent climbs each year.
+    var rentTotal = 0, r1 = rent0;
+    for (var y = 0; y < years; y++) { rentTotal += r1 * 12; r1 *= (1 + esc); }
+
+    // Buying: 20-year bond, once-off costs ~8%, balance amortised monthly.
+    var L = Math.max(0, price - dep), n = 240, rm = yr / 12;
+    var pay = rm > 0 ? L * rm / (1 - Math.pow(1 + rm, -n)) : L / n;
+    var months = Math.min(years * 12, n);
+    var bal = L, paidBond = 0;
+    for (var m = 0; m < months; m++) {
+      var interest = bal * rm;
+      var thisPay = Math.min(pay, bal + interest);
+      bal -= (thisPay - interest);
+      paidBond += thisPay;
+    }
+    var buyFees = price * 0.08;
+    var ownTotal = dep + buyFees + paidBond + own * 12 * years;
+    var futureValue = price * Math.pow(1 + grow, years);
+    var equity = futureValue - Math.max(0, bal);
+    // Net position: what owning left you holding minus what it cost you,
+    // compared against renting's pure cost.
+    var ownNetCost = ownTotal - equity;
+    var diff = rentTotal - ownNetCost;
+
+    $("r-rentcost").textContent = MK.moneyC(Math.round(rentTotal * 100));
+    $("r-owncost").textContent = MK.moneyC(Math.round(ownTotal * 100));
+    $("r-equity").textContent = MK.moneyC(Math.round(equity * 100));
+    $("r-value").textContent = MK.moneyC(Math.round(futureValue * 100));
+    $("r-net").textContent = (diff >= 0 ? "+" : "−") + MK.moneyC(Math.round(Math.abs(diff) * 100));
+    $("verdict").textContent = diff >= 0
+      ? "On these numbers, buying comes out ahead by about " + MK.moneyC(Math.round(diff * 100)) + " over " + years + " years — mostly because of the equity you keep."
+      : "On these numbers, renting is cheaper by about " + MK.moneyC(Math.round(-diff * 100)) + " over " + years + " years — short stays rarely recover the buying costs.";
+  }
+  ["rent","esc","price","dep","rate","own","grow","years"].forEach(function (id) { $(id).addEventListener("input", calc); });
+  calc();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Do You Have? — Makhie</title>
+<meta name="description" content="Not 'what qualification do you have' — what do you HAVE? Tell Makhie what's in your hands and get real career options: difficulty, study time, pathway, and where to start free.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chips button { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 16px;
+    font: 600 13px inherit; font-family: inherit; color: var(--ink); cursor: pointer;
+    transition: border-color .14s, background .14s, transform .1s; }
+  .chips button:hover { transform: translateY(-1px); }
+  .chips button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+  .youhave { font-size: 26px; font-weight: 900; letter-spacing: -.015em; margin-top: 6px; display: none; }
+  .paths { display: grid; gap: 14px; margin-top: 18px; }
+  .path { border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: var(--shadow); overflow: hidden; }
+  .path summary { list-style: none; cursor: pointer; padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+    transition: background .14s; }
+  .path summary::-webkit-details-marker { display: none; }
+  .path summary:hover { background: var(--accent-soft); }
+  .path .em { font-size: 26px; flex: none; }
+  .path .head { flex: 1; min-width: 0; }
+  .path .head b { font-size: 15.5px; }
+  .path .meta { font-size: 12px; color: var(--mute); margin-top: 3px; }
+  .path .meta b { color: var(--warn); font-size: 12px; letter-spacing: 1px; }
+  .path .go { flex: none; font-size: 12.5px; font-weight: 700; color: var(--accent-ink); }
+  .path .body { padding: 0 20px 18px 60px; font-size: 13.5px; line-height: 1.65; color: var(--ink); }
+  .path .chain { font-weight: 700; color: var(--accent-ink); margin-bottom: 8px; }
+  .path .body h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); margin: 14px 0 4px; }
+  .path .body ol { padding-left: 18px; }
+  .path .body li { margin-top: 4px; }
+  .path .rsrc { color: var(--mute); font-size: 12.5px; }
+  .path .rsrc b { color: var(--ink); }
+  .fitnote { font-size: 12px; color: var(--ok); font-weight: 600; }
+  .learner { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 12px 16px; font-size: 12.5px; color: var(--accent-ink); line-height: 1.6; margin-top: 18px; display: none; }
+  /* LinkedIn: the platform's own blue, its own glyph. */
+  .li-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  a.li-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 9px;
+    background: #0A66C2; border: 1px solid #084d92; color: #fff; font: 600 12.5px inherit;
+    text-decoration: none; transition: background .15s, transform .15s; }
+  a.li-btn:hover { background: #084d92; transform: translateY(-1px); }
+  a.li-btn svg { width: 14px; height: 14px; fill: currentColor; flex: none; }
+  .li-note { font-size: 11.5px; color: var(--mute); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="study-audio.html">PDF to Audio</a>
+      <a class="link" href="checklist.html">Checklists</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Learn &amp; grow · free</div>
+    <h1 class="page">What do you have?</h1>
+    <p class="sub">Not "what qualification do you have?" — that's the wrong question. Tell Makhie
+    what's already in your hands, and see the doors that are open right now: how hard, how long,
+    and the path from first step to real career.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>This is what I have</h3>
+      <label class="f" for="edu">School</label>
+      <select class="f" id="edu">
+        <option value="gr9">Grade 9 or below</option>
+        <option value="gr10" selected>Grade 10 – 11</option>
+        <option value="matric">Matric</option>
+        <option value="post">Certificate / diploma</option>
+      </select>
+      <label class="f" for="exp">Work so far</label>
+      <select class="f" id="exp">
+        <option value="none" selected>Nothing formal yet</option>
+        <option value="informal">Hustles, piece jobs, helping out</option>
+        <option value="formal">I've had a job before</option>
+      </select>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="tools">Tools</label>
+          <select class="f" id="tools">
+            <option value="phone" selected>My phone</option>
+            <option value="some">Phone + sometimes a computer</option>
+            <option value="pc">My own computer</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="time">Time I can give to learning</label>
+          <select class="f" id="time">
+            <option value="3">1 – 3 months</option>
+            <option value="6" selected>3 – 6 months</option>
+            <option value="12">6 – 12 months or more</option>
+          </select>
+        </div>
+      </div>
+      <label class="f">What pulls you? (pick any)</label>
+      <div class="chips" id="chips">
+        <button type="button" data-i="computers">💻 Computers</button>
+        <button type="button" data-i="hands">🔧 Fixing things</button>
+        <button type="button" data-i="people">🗣️ People &amp; talking</button>
+        <button type="button" data-i="selling">🛍️ Selling</button>
+        <button type="button" data-i="numbers">🔢 Numbers &amp; admin</button>
+        <button type="button" data-i="driving">🚚 Driving</button>
+        <button type="button" data-i="food">🍲 Food</button>
+        <button type="button" data-i="care">🤝 Caring for people</button>
+        <button type="button" data-i="building">🧱 Building</button>
+        <button type="button" data-i="creative">🎨 Creative</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="show" type="button">Show me my options</button>
+      </div>
+    </div>
+
+    <div class="card" id="out-card">
+      <div class="youhave" id="youhave">You have options.</div>
+      <p class="note" id="out-note">Fill in the left side — then this side fills with doors, not
+      walls.</p>
+      <div class="paths" id="paths"></div>
+      <div class="row" id="share-row" style="display:none">
+        <a class="btn wa" id="wa-career" target="_blank" rel="noopener">Share my options on WhatsApp</a>
+      </div>
+      <div class="learner" id="learner">
+        <b>The word to know: learnership.</b> A learnership is real training that combines
+        classroom theory with paid workplace experience — you earn a small stipend while you
+        learn, and it ends in a registered qualification. Look for them at your nearest TVET
+        college, on <b>sayouth.mobi</b> (free to join, no data needed on most networks), and on
+        the websites of the SETA for your field. NSFAS can cover TVET study.
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — honest options, free starting points, no gatekeeping. Details of programmes change; always confirm with the provider.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* Every pathway is a door, never a wall. score() ranks them by fit with
+     what the person HAS — nothing is ever hidden, only ordered. */
+  var PATHS = [
+    { em: "📊", name: "Office & Data", stars: 2, months: 3, study: "1–3 months",
+      chain: "Admin → data capture → junior analyst",
+      boost: { numbers: 3, computers: 2, people: 1 }, needsPc: 0.5,
+      need: "A phone to learn on; computer access helps but libraries and internet cafés count.",
+      plan: ["Learn Excel, Word and email free on Microsoft Learn (learn.microsoft.com/training) — phone works.",
+        "Practise professional WhatsApp and email — short, clear, polite; it's a real workplace skill.",
+        "Make your CV with Makhie's evidence tools, one page, honest.",
+        "Register on sayouth.mobi and apply for every admin and data-capture opening weekly."],
+      rsrc: "Microsoft Learn (free) · sayouth.mobi · Harambee · local TVET college — NCV Office Administration" },
+    { em: "🖥️", name: "IT Support", stars: 3, months: 6, study: "3–6 months",
+      chain: "Helpdesk → IT technician → networking",
+      boost: { computers: 3, hands: 1, people: 1 }, needsPc: 1,
+      need: "Regular computer access and curiosity about why things break.",
+      plan: ["Start Cisco Networking Academy's free IT Essentials course (netacad.com).",
+        "Watch Professor Messer's free CompTIA A+ series on YouTube — the industry's entry ticket.",
+        "Fix phones, laptops and WiFi for people around you — every fix is experience for your CV.",
+        "Apply for IT learnerships (MICT SETA) and helpdesk jobs on sayouth.mobi."],
+      rsrc: "Cisco NetAcad (free) · Professor Messer (free) · MICT SETA learnerships · TVET NCV IT" },
+    { em: "💻", name: "Software", stars: 4, months: 12, study: "6–12 months",
+      chain: "Junior developer → freelance → software company",
+      boost: { computers: 3, creative: 1, numbers: 1 }, needsPc: 1.5,
+      need: "Computer access and stubbornness. No Matric wall here — a portfolio of working projects opens doors certificates can't.",
+      plan: ["Start freeCodeCamp (free, works on phone; better on computer) — HTML, CSS, JavaScript.",
+        "Build three small real things — a site for a local business, a price calculator, a booking form.",
+        "Put them on GitHub; that's your portfolio and your CV.",
+        "Apply to ALX Africa's free software programmes; take small paid jobs on local Facebook groups."],
+      rsrc: "freeCodeCamp (free) · The Odin Project (free) · ALX Africa (free programmes) · GitHub" },
+    { em: "📱", name: "Digital Marketing", stars: 3, months: 6, study: "3–6 months",
+      chain: "Run local pages → freelance → agency or in-house",
+      boost: { creative: 2, selling: 2, people: 1, computers: 1 }, needsPc: 0.5,
+      need: "A phone and proof you can grow a page — start with a local business you know.",
+      plan: ["Do Meta Blueprint's free courses on Facebook & Instagram marketing.",
+        "Offer one local business a free month of posts — before/after numbers become your pitch.",
+        "Charge the next three businesses. Use Makhie's invoice maker to look professional.",
+        "Collect results in a one-page portfolio; approach agencies with numbers, not promises."],
+      rsrc: "Meta Blueprint (free) · Google Digital Skills (free) · your first three local clients" },
+    { em: "🛍️", name: "Sales & Customer Service", stars: 2, months: 1, study: "Start now",
+      chain: "Shop assistant → supervisor → manager or own shop",
+      boost: { selling: 3, people: 2 }, needsPc: 0,
+      need: "Your voice, your reliability, and showing up. Experience beats paper here.",
+      plan: ["Walk your area with a one-page CV — retail hires on attitude and availability.",
+        "Learn to open, serve, count stock and close — every till shift is training.",
+        "Aim for supervisor within a year: volunteer for stock counts and cash-ups.",
+        "Use Makhie's stock and cashbook tools when you're ready to run your own."],
+      rsrc: "sayouth.mobi retail openings · W&RSETA learnerships · every shop within walking distance" },
+    { em: "🚚", name: "Driving & Logistics", stars: 2, months: 6, study: "License first",
+      chain: "Learner's → Code 8/10 → PDP → driver → own transport",
+      boost: { driving: 3, hands: 1 }, needsPc: 0,
+      need: "A license is the qualification. Save for it like it's tuition — it is.",
+      plan: ["Book your learner's at the traffic department; study the K53 free apps.",
+        "Get Code 8, then Code 10 — trucks and bakkies pay more than sedans.",
+        "Add a PDP (professional driving permit) — it unlocks paid passenger and goods work.",
+        "Start with delivery platforms and local contracts; track every rand with Makhie's cashbook."],
+      rsrc: "K53 apps (free) · TETA learnerships · delivery platforms · local transport WhatsApp groups" },
+    { em: "⚡", name: "Electrical", stars: 4, months: 12, study: "1–3 years (learnership)",
+      chain: "Apprentice → qualified electrician (trade test) → own company or solar",
+      boost: { hands: 3, building: 1, numbers: 1 }, needsPc: 0,
+      need: "Hands that like work and respect for the thing that can kill you. Maths at school level helps.",
+      plan: ["Enrol NCV Electrical Infrastructure Construction at a TVET college (NSFAS can fund it).",
+        "Hunt for an apprenticeship or EWSETA learnership — earning while learning.",
+        "Work toward your trade test — that paper is the difference in pay for life.",
+        "Qualified electricians feed straight into solar — SA can't train them fast enough."],
+      rsrc: "TVET NCV Electrical · EWSETA learnerships · NSFAS · QCTO trade test" },
+    { em: "☀️", name: "Solar Installation", stars: 3, months: 9, study: "3–12 months",
+      chain: "Installer's helper → certified PV installer → own installs",
+      boost: { hands: 3, building: 1 }, needsPc: 0,
+      need: "Comfort on a roof and care with wiring. The demand is real and growing.",
+      plan: ["Start as a helper with any local installer — carry, mount, learn the layout.",
+        "Do a short PV installation course (some are SETA-funded — ask TVET colleges).",
+        "Learn the paperwork: CoCs matter; installers who document properly win contracts.",
+        "Quote your first own jobs with Makhie's invoice maker."],
+      rsrc: "TVET short courses · EWSETA · local installers hiring helpers · PV GreenCard programme" },
+    { em: "🔧", name: "Plumbing", stars: 3, months: 12, study: "1–3 years (learnership)",
+      chain: "Apprentice → qualified plumber (trade test) → own business",
+      boost: { hands: 3, building: 1 }, needsPc: 0,
+      need: "Problem-solving hands. Every geyser in the country is your future customer.",
+      plan: ["NCV Building & Civil at TVET, or straight to an apprenticeship with a local plumber.",
+        "Log your hours — a learnership formalises them toward your trade test.",
+        "Trade test = qualified plumber = triple the day rate.",
+        "Makhie's deal summary and invoice tools keep the business side straight from day one."],
+      rsrc: "TVET colleges · CETA learnerships · IOPSA · QCTO trade test" },
+    { em: "🔥", name: "Welding", stars: 3, months: 9, study: "6–18 months",
+      chain: "Trainee → coded welder → boilermaker or own shop",
+      boost: { hands: 3, building: 1, creative: 1 }, needsPc: 0,
+      need: "Steady hands and patience. Coded welders (certified for pressure work) earn seriously.",
+      plan: ["TVET welding courses or a workshop apprenticeship — burn rods, learn positions.",
+        "Work toward coding certificates — each code is a pay rise.",
+        "Gates, burglar bars and braai stands are a business you can start from a garage.",
+        "Sell what you make; invoice with Makhie."],
+      rsrc: "TVET welding · MerSETA learnerships · SAIW (SA Institute of Welding) courses" },
+    { em: "🚗", name: "Automotive", stars: 3, months: 12, study: "1–3 years",
+      chain: "Workshop assistant → apprentice mechanic → qualified → own workshop",
+      boost: { hands: 3, driving: 1 }, needsPc: 0,
+      need: "Love for engines. Start by being the person who shows up early and cleans tools.",
+      plan: ["Get into any workshop — washing, stripping, fetching. Watch everything.",
+        "Apply for MerSETA apprenticeships and TVET automotive courses.",
+        "Specialise where the money is: diagnostics, aircon, or auto-electrical.",
+        "Trade test → qualified — then your name on the gate."],
+      rsrc: "MerSETA apprenticeships · TVET automotive · local workshops" },
+    { em: "🧱", name: "Construction & Bricklaying", stars: 2, months: 3, study: "Learn on site",
+      chain: "General worker → skilled bricklayer → subcontractor",
+      boost: { building: 3, hands: 2 }, needsPc: 0,
+      need: "Strength, straight lines and showing up. You can be earning this month.",
+      plan: ["Start on any site as general labour — watch the artisans, ask questions.",
+        "Learn to lay to a line and read a plan; skilled rates are double general rates.",
+        "Short TVET bricklaying/plastering courses stamp the skill.",
+        "Small private jobs (walls, paving) become your business — paper them with Makhie."],
+      rsrc: "CETA learnerships · TVET construction · every site foreman you impress" },
+    { em: "🪚", name: "Carpentry", stars: 3, months: 9, study: "6–24 months",
+      chain: "Helper → carpenter → furniture & fitting business",
+      boost: { hands: 3, creative: 2, building: 1 }, needsPc: 0,
+      need: "Patience and precision. Kitchens and built-in cupboards pay well everywhere.",
+      plan: ["Help a working carpenter — learn to measure twice and respect the saw.",
+        "TVET woodwork courses or a FP&M SETA learnership formalise it.",
+        "Cupboards, shelves, doors — quote small jobs with Makhie's tools.",
+        "Photograph every finished job; your gallery is your marketing."],
+      rsrc: "TVET woodworking · FP&M SETA · local joinery shops" },
+    { em: "❄️", name: "Refrigeration & Aircon", stars: 4, months: 12, study: "1–3 years",
+      chain: "Assistant → registered technician → own service company",
+      boost: { hands: 3, computers: 1 }, needsPc: 0,
+      need: "Cool head, careful hands — gas handling needs registration, which is your moat.",
+      plan: ["Assist an aircon/fridge technician; every shop, surgery and cold room needs one.",
+        "TVET refrigeration courses, then registration for safe gas handling.",
+        "Maintenance contracts are the gold: steady monthly money.",
+        "Track contracts and payments with Makhie's cashbook."],
+      rsrc: "TVET refrigeration · MerSETA · SAQCC Gas registration" },
+    { em: "🤝", name: "Care Work", stars: 2, months: 3, study: "1–6 months",
+      chain: "Caregiver course → home-based care → nursing assistant (further study)",
+      boost: { care: 3, people: 2 }, needsPc: 0,
+      need: "A heart for people on their hardest days. Ageing families need you, here and abroad.",
+      plan: ["Do an accredited caregiver / home-based care course (check HWSETA accreditation).",
+        "Start with families in your area — references are everything in care work.",
+        "First aid certificate makes you more placeable.",
+        "The path continues: nursing assistant, enrolled nurse — one certificate at a time."],
+      rsrc: "HWSETA-accredited providers · SA Red Cross first aid · care agencies" },
+    { em: "🍲", name: "Food Business", stars: 2, months: 1, study: "Start now",
+      chain: "Cook from home → stalls & events → registered catering company",
+      boost: { food: 3, selling: 2, people: 1 }, needsPc: 0,
+      need: "Food people come back for. Everything else can be learned while you sell.",
+      plan: ["Start with what you already cook best; sell to your street before your suburb.",
+        "Get the municipal Certificate of Acceptability when you're regular.",
+        "Paper every order — Makhie's deal summary and receipts make you look established.",
+        "Register the company with Makhie's CIPC helper when the orders justify it."],
+      rsrc: "Municipal health office (CoA) · Makhie's business tools · school & church events" }
+  ];
+
+  /* LinkedIn deep links: straight into the live search for each path — new and
+     old posts and jobs, always current, no scraping and no stale copies. */
+  var LI_ICON = "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z'/></svg>";
+  var LI = {
+    "Office & Data": "administrative assistant data capture",
+    "IT Support": "IT support technician helpdesk",
+    "Software": "junior software developer",
+    "Digital Marketing": "digital marketing social media assistant",
+    "Sales & Customer Service": "retail sales assistant customer service",
+    "Driving & Logistics": "driver code 10 delivery",
+    "Electrical": "electrician apprentice",
+    "Solar Installation": "solar PV installer",
+    "Plumbing": "plumber apprentice",
+    "Welding": "welder boilermaker",
+    "Automotive": "motor mechanic apprentice workshop",
+    "Construction & Bricklaying": "construction bricklayer general worker",
+    "Carpentry": "carpenter joiner",
+    "Refrigeration & Aircon": "refrigeration aircon technician",
+    "Care Work": "caregiver home based care",
+    "Food Business": "catering chef cook"
+  };
+  function liJobs(q) { return "https://www.linkedin.com/jobs/search/?keywords=" + encodeURIComponent(q) + "&location=South%20Africa"; }
+  function liPosts(q) { return "https://www.linkedin.com/search/results/content/?keywords=" + encodeURIComponent(q + " South Africa"); }
+
+  var picked = {};
+  [].forEach.call(document.querySelectorAll("#chips button"), function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-i");
+      picked[k] = !picked[k];
+      b.classList.toggle("on", picked[k]);
+    });
+  });
+
+  function stars(n) { return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); }
+
+  $("show").addEventListener("click", function () {
+    var tools = $("tools").value, time = parseInt($("time").value, 10);
+    var scored = PATHS.map(function (p) {
+      var s = 1;
+      Object.keys(p.boost).forEach(function (k) { if (picked[k]) s += p.boost[k]; });
+      if (p.months <= time) s += 1.5;                      // fits the time they can give
+      if (p.needsPc && tools === "pc") s += p.needsPc;     // computer access helps computer paths
+      if (p.needsPc >= 1 && tools === "phone") s -= 0.5;   // honest, not disqualifying
+      return { p: p, s: s };
+    }).sort(function (a, b) { return b.s - a.s; });
+
+    $("youhave").style.display = "block";
+    $("out-note").textContent = "Ranked for what you have right now — every one of these is a real, walkable path. Tap one to see the plan.";
+    $("learner").style.display = "block";
+    var phoneOnly = tools === "phone";
+    $("paths").innerHTML = scored.map(function (x, i) {
+      var p = x.p;
+      return "<details class='path'" + (i === 0 ? " open" : "") + "><summary>" +
+        "<span class='em'>" + p.em + "</span>" +
+        "<span class='head'><b>" + p.name + "</b>" +
+        "<span class='meta'>Difficulty <b>" + stars(p.stars) + "</b> · Study: " + p.study +
+        (phoneOnly && !p.needsPc ? " · <span class='fitnote'>phone-only friendly</span>" : "") +
+        "</span></span>" +
+        "<span class='go'>Start learning →</span></summary>" +
+        "<div class='body'>" +
+        "<div class='chain'>" + p.chain + "</div>" +
+        p.need +
+        "<h4>This week</h4><ol>" + p.plan.map(function (st) { return "<li>" + st + "</li>"; }).join("") + "</ol>" +
+        "<h4>Free &amp; funded doors</h4><div class='rsrc'>" + p.rsrc + "</div>" +
+        "<h4>What's out there right now</h4>" +
+        "<div class='li-row'>" +
+          "<a class='li-btn' target='_blank' rel='noopener' href='" + liJobs(LI[p.name] || p.name) + "'>" + LI_ICON + "Jobs on LinkedIn</a>" +
+          "<a class='li-btn' target='_blank' rel='noopener' href='" + liPosts(LI[p.name] || p.name) + "'>" + LI_ICON + "Posts &amp; advice on LinkedIn</a>" +
+        "</div>" +
+        "<div class='li-note'>Opens LinkedIn's live search — new and old listings, straight from the source. A free LinkedIn profile shows you everything and is a CV in itself.</div>" +
+        "</div></details>";
+    }).join("");
+    // Solo reveal: opening one path closes the rest.
+    [].forEach.call(document.querySelectorAll(".path"), function (d) {
+      d.addEventListener("toggle", function () {
+        if (!d.open) return;
+        [].forEach.call(document.querySelectorAll(".path[open]"), function (o) {
+          if (o !== d) o.removeAttribute("open");
+        });
+        d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
+    $("out-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("share-row").style.display = "flex";
+    $("wa-career").onclick = function () {
+      var top3 = scored.slice(0, 3).map(function (x, i) {
+        return (i + 1) + ") " + x.p.name + " — " + stars(x.p.stars) + ", study " + x.p.study;
+      });
+      this.href = MK.waLink("I have options. My top career paths right now:\n\n" +
+        top3.join("\n") + "\n\n— found on Makhie's What Do You Have?");
+    };
+  });
+})();
+</script>
+</body>
+</html>

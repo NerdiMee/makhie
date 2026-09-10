@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery Proof — Makhie</title>
+<meta name="description" content="Customer signs on your phone, you keep the proof. For food, furniture, building materials, stock — anything you deliver.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  #pad { width: 100%; max-width: 440px; height: 150px; border: 1.5px dashed var(--line); border-radius: 10px;
+    background: #fff; display: block; touch-action: none; cursor: crosshair; }
+  .delivered { display: none; margin-top: 16px; border: 2px solid var(--ok); color: var(--ok);
+    border-radius: 12px; padding: 14px 18px; font-weight: 900; font-size: 20px; letter-spacing: .06em;
+    text-align: center; background: var(--ok-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="delivery.html">Delivery Proof</a>
+      <a class="link" href="stock.html">Stock Received</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Delivery Proof</h1>
+    <p class="sub">Food, furniture, building materials, clothing, appliances, stock — whatever you
+    deliver, the customer signs on your phone and you walk away with proof.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The delivery</h3>
+      <label class="f" for="d-biz">Delivered by (you / your business)</label>
+      <input class="f" id="d-biz" placeholder="e.g. Thabo's Transport">
+      <label class="f" for="d-cust">Customer name</label>
+      <input class="f" id="d-cust" placeholder="Who is receiving?">
+      <label class="f" for="d-items">What was delivered</label>
+      <textarea class="f" id="d-items" rows="3" placeholder="e.g. 10 bags cement, 2 door frames, 1 couch"></textarea>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="d-ref">Reference / order no. (optional)</label>
+          <input class="f" id="d-ref">
+        </div>
+        <div>
+          <label class="f" for="d-where">Delivered to (address / place)</label>
+          <input class="f" id="d-where" placeholder="e.g. 12 Vilakazi St">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Customer signs here</h3>
+      <p class="note">Hand your phone over — the customer signs to confirm everything arrived.</p>
+      <canvas id="pad" width="880" height="300" style="margin-top:10px"></canvas>
+      <div class="row">
+        <button class="btn quiet small" id="pad-clear" type="button">Clear</button>
+        <span class="note" id="pad-note">Unsigned</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="confirm" type="button" disabled>Confirm delivery</button>
+      </div>
+      <div class="delivered" id="delivered">DELIVERED ✓</div>
+      <div class="row" id="wa-row" style="display:none">
+        <a class="btn wa" id="wa-deliv" target="_blank" rel="noopener">Share confirmation on WhatsApp</a>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — proof is generated on your device; signed PDFs belong to you.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var pad = MK.sigPad($("pad"));
+  pad.onink = function () { $("pad-note").textContent = "Signed"; update(); };
+  pad.onclear = function () { $("pad-note").textContent = "Unsigned"; update(); };
+  $("pad-clear").addEventListener("click", pad.clear);
+  function update() {
+    $("confirm").disabled = !(pad.hasInk() && $("d-items").value.trim() && $("d-cust").value.trim());
+  }
+  ["d-items", "d-cust", "d-biz"].forEach(function (id) { $(id).addEventListener("input", update); });
+
+  $("confirm").addEventListener("click", function () {
+    var now = new Date();
+    var stamp = now.toISOString().slice(0, 16).replace("T", " ");
+    var p = MK.pdfStart("Proof of delivery", [stamp]);
+    p.kv("Delivered by", $("d-biz").value || "—");
+    p.kv("Customer", $("d-cust").value);
+    p.kv("Delivered to", $("d-where").value || "—");
+    if ($("d-ref").value) p.kv("Reference", $("d-ref").value);
+    p.h("Items delivered");
+    p.p($("d-items").value);
+    p.y += 6; p.room(46);
+    // The DELIVERED mark and the customer's signature.
+    p.doc.setDrawColor(13, 122, 85).setLineWidth(0.8).setTextColor(13, 122, 85);
+    p.doc.setFont("helvetica", "bold").setFontSize(16);
+    p.doc.roundedRect(p.M, p.y - 7, 52, 11, 2, 2);
+    p.doc.text("DELIVERED ✓", p.M + 26, p.y, { align: "center" });
+    var sig = pad.trimmedPng();
+    var w = 55, h = w * sig.h / sig.w; if (h > 24) { h = 24; w = h * sig.w / sig.h; }
+    p.doc.addImage(sig.url, "PNG", p.W - p.M - 62, p.y - h + 2, w, h);
+    p.doc.setDrawColor(27, 39, 64).setLineWidth(0.4);
+    p.doc.line(p.W - p.M - 62, p.y + 4, p.W - p.M, p.y + 4);
+    p.doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(92, 106, 133);
+    p.doc.text("Received by " + $("d-cust").value + " — " + stamp, p.W - p.M - 62, p.y + 9);
+    var name = "delivered-" + ($("d-ref").value || now.toISOString().slice(0, 10)).replace(/[^\w-]+/g, "-") + ".pdf";
+    p.finish(name);
+
+    pad.lock(); $("pad-clear").disabled = true; $("confirm").disabled = true;
+    $("delivered").style.display = "block";
+    $("wa-row").style.display = "flex";
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("DELIVERED - proof PDF attached. Received by " + $("d-cust").value + "."); };
+    $("wa-deliv").href = MK.waLink("DELIVERED ✓\n" + $("d-items").value +
+      "\nReceived by " + $("d-cust").value + " — " + stamp +
+      ($("d-ref").value ? "\nRef: " + $("d-ref").value : "") + "\n— proof kept on Makhie");
+    $("status").textContent = "Proof saved as " + name + " ✓";
+    $("status").className = "note hint-ok";
+    MK.saveDoc("delivery", "Delivery — " + $("d-cust").value + ($("d-ref").value ? " (" + $("d-ref").value + ")" : ""), 0, {
+      customer: $("d-cust").value, items: $("d-items").value, where: $("d-where").value,
+      ref: $("d-ref").value, at: now.toISOString()
+    }).catch(function () {});
+  });
+})();
+</script>
+</body>
+</html>

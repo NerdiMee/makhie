@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debt Payoff Planner — Makhie</title>
+<meta name="description" content="List your debts, add what extra you can pay, and see how fast you can be debt-free — snowball vs avalanche, months and interest saved.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  table.debts { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.debts th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); text-align: left; padding: 6px 4px; }
+  table.debts td { padding: 4px 3px; }
+  table.debts input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    font: 400 13px inherit; font-family: inherit; outline: none; }
+  table.debts input:focus { border-color: var(--accent); }
+  td.dx { width: 30px; } td.dx button { border: 0; background: none; color: var(--mute); font-size: 15px; cursor: pointer; padding: 8px 4px; }
+  td.dx button:hover { color: #b3402a; }
+  .strategy { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+  .strategy.best { border-color: var(--ok); background: var(--ok-soft); }
+  .strategy b.head { font-size: 14px; }
+  .strategy .months { font-size: 26px; font-weight: 900; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .strategy small { color: var(--mute); display: block; margin-top: 4px; line-height: 1.55; }
+  .order { font-size: 12.5px; color: var(--mute); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="payplan.html">Repayment Schedule</a>
+      <a class="link" href="loancalc.html">Loan Calculator</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Debt Payoff Planner</h1>
+    <p class="sub">List every debt, add whatever extra you can put in each month, and see the
+    date the last one dies — two ways to get there, and what each costs.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Your debts</h3>
+      <table class="debts">
+        <thead><tr><th>Name</th><th style="width:98px">Owing</th><th style="width:70px">Rate %</th><th style="width:98px">Min / month</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="row">
+        <button class="btn quiet small" id="add" type="button">+ Add a debt</button>
+      </div>
+      <label class="f" for="extra">Extra you can pay per month (on top of minimums)</label>
+      <input class="f" id="extra" placeholder="R500" value="R500">
+      <p class="disc">Snowball kills the smallest debt first (quick wins, easier to stick to).
+      Avalanche kills the highest interest rate first (mathematically cheapest). Either beats
+      paying minimums forever. Not financial advice.</p>
+    </div>
+    <div class="card">
+      <h3>Freedom date</h3>
+      <div id="out"><p class="note">Add at least one debt with a balance and a minimum payment.</p></div>
+      <div class="res-row" id="minwarn" style="display:none"></div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — calculations run on your device.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function addRow(name, owing, rate, min) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><input class='d-name' placeholder='e.g. Store card'></td>" +
+      "<td><input class='d-bal' placeholder='R5 000'></td>" +
+      "<td><input class='d-rate' type='number' min='0' step='0.5' placeholder='21'></td>" +
+      "<td><input class='d-min' placeholder='R250'></td>" +
+      "<td class='dx'><button type='button' aria-label='Remove'>✕</button></td>";
+    tr.querySelector(".d-name").value = name || "";
+    tr.querySelector(".d-bal").value = owing || "";
+    tr.querySelector(".d-rate").value = rate != null ? rate : "";
+    tr.querySelector(".d-min").value = min || "";
+    tr.querySelector(".dx button").addEventListener("click", function () { tr.remove(); calc(); });
+    tr.addEventListener("input", calc);
+    $("rows").appendChild(tr);
+  }
+  $("add").addEventListener("click", function () { addRow(); });
+
+  function debts() {
+    return [].map.call($("rows").children, function (tr) {
+      return {
+        name: tr.querySelector(".d-name").value.trim() || "Debt",
+        bal: MK.parseAmount(tr.querySelector(".d-bal").value) / 100,
+        rate: (parseFloat(tr.querySelector(".d-rate").value) || 0) / 100 / 12,
+        min: MK.parseAmount(tr.querySelector(".d-min").value) / 100
+      };
+    }).filter(function (d) { return d.bal > 0; });
+  }
+
+  // Simulate paying: minimums on everything + all extra onto the target debt,
+  // ordered by the strategy. Freed-up minimums roll into the extra.
+  function simulate(list, order) {
+    var ds = list.map(function (d) { return { name: d.name, bal: d.bal, rate: d.rate, min: d.min }; });
+    var months = 0, totalInterest = 0, killOrder = [];
+    var extra = MK.parseAmount($("extra").value) / 100;
+    while (ds.some(function (d) { return d.bal > 0.005; }) && months < 600) {
+      months++;
+      ds.forEach(function (d) { if (d.bal > 0) { var i = d.bal * d.rate; d.bal += i; totalInterest += i; } });
+      var budget = extra + ds.reduce(function (s, d) { return s + (d.bal > 0 ? d.min : 0); }, 0);
+      // minimums first
+      ds.forEach(function (d) {
+        if (d.bal <= 0) return;
+        var p = Math.min(d.min, d.bal, budget);
+        d.bal -= p; budget -= p;
+      });
+      // remaining budget onto targets in strategy order
+      var targets = ds.filter(function (d) { return d.bal > 0.005; }).sort(order);
+      for (var i = 0; i < targets.length && budget > 0.005; i++) {
+        var p2 = Math.min(budget, targets[i].bal);
+        targets[i].bal -= p2; budget -= p2;
+      }
+      ds.forEach(function (d) {
+        if (d.bal <= 0.005 && killOrder.indexOf(d.name) < 0) killOrder.push(d.name);
+      });
+    }
+    return { months: months, interest: totalInterest, order: killOrder, forever: months >= 600 };
+  }
+
+  function calc() {
+    var list = debts();
+    var out = $("out");
+    if (!list.length) { out.innerHTML = "<p class='note'>Add at least one debt with a balance and a minimum payment.</p>"; return; }
+    var snow = simulate(list, function (a, b) { return a.bal - b.bal; });
+    var aval = simulate(list, function (a, b) { return b.rate - a.rate; });
+    function fmt(r, label, why, best) {
+      if (r.forever) return "<div class='strategy'><b class='head'>" + label + "</b><div class='months'>600+ months</div><small>The payments don't beat the interest — raise the minimums or the extra.</small></div>";
+      var yrs = Math.floor(r.months / 12), mo = r.months % 12;
+      return "<div class='strategy" + (best ? " best" : "") + "'><b class='head'>" + label + (best ? " — recommended" : "") + "</b>" +
+        "<div class='months'>" + r.months + " months" + (r.months >= 12 ? " (" + yrs + "y " + mo + "m)" : "") + "</div>" +
+        "<small>" + why + " Interest paid on the way: <b>" + MK.moneyC(Math.round(r.interest * 100)) + "</b>.</small>" +
+        "<div class='order'>Order: " + r.order.map(MK.esc).join(" → ") + "</div></div>";
+    }
+    var avalBest = aval.interest <= snow.interest;
+    out.innerHTML =
+      fmt(aval, "Avalanche (highest rate first)", "The cheapest route in rands.", avalBest) +
+      fmt(snow, "Snowball (smallest debt first)", "Quick wins keep you going.", !avalBest) +
+      (snow.interest > aval.interest && !aval.forever && !snow.forever
+        ? "<p class='note' style='margin-top:10px'>Avalanche saves about <b>" + MK.moneyC(Math.round((snow.interest - aval.interest) * 100)) + "</b> vs snowball on these numbers.</p>" : "");
+    // Informational only: the plan above already accounts for the extra, so a
+    // min-below-interest debt is a heads-up, not an error.
+    var risky = list.filter(function (d) { return d.rate > 0 && d.min <= d.bal * d.rate; });
+    if (risky.length && !aval.forever) {
+      out.innerHTML += "<p class='note' style='margin-top:8px'>Heads up: " +
+        risky.map(function (d) { return "<b>" + MK.esc(d.name) + "</b>"; }).join(", ") +
+        (risky.length > 1 ? " grow" : " grows") +
+        " on the minimum alone — your extra payment is what keeps the plan working. Protect it.</p>";
+    }
+  }
+  $("extra").addEventListener("input", calc);
+  addRow("Store card", "R5 000", 21, "R250");
+  addRow("Mashonisa", "R2 000", 30, "R400");
+  calc();
+})();
+</script>
+</body>
+</html>

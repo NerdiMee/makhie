@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Converter — Makhie</title>
+<meta name="description" content="Images to PDF, PDF pages to images, and picture formats swapped — all on your device, nothing uploaded.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .thumbs img { height: 74px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: #fff; }
+  .mode-note { font-size: 12.5px; color: var(--accent-ink); background: var(--accent-soft);
+    border-radius: 8px; padding: 8px 12px; margin-top: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="compress.html">Compressor</a>
+      <a class="link" href="sign.html">PDF Signing</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Document Converter</h1>
+    <p class="sub">Photos into one PDF, PDF pages into images, and picture formats swapped —
+    all on your device. Nothing is ever uploaded.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Drop your files</h3>
+      <div class="drop" id="drop">Drop images or a PDF here, or click to choose</div>
+      <input type="file" id="file" accept="application/pdf,image/*" multiple hidden>
+      <div class="mode-note" id="mode-note"></div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="card">
+      <h3>Convert to…</h3>
+      <div class="row" id="acts">
+        <p class="note">Drop files first — the right conversions appear here.</p>
+      </div>
+      <div class="bar" id="bar" style="display:none"><i></i></div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+      <p class="disc">Images → one PDF keeps page order as dropped. PDF → images renders each
+      page as a sharp PNG. Format swaps go through your browser's own image engine.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — conversions run on your device and never touch a server.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script src="../assets/vendor/pdf.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var pdfjs = window["pdfjs-dist/build/pdf"] || window.pdfjsLib;
+  pdfjs.GlobalWorkerOptions.workerSrc = "../assets/vendor/pdf.worker.min.js";
+  var images = [], pdfBytes = null, pdfName = "document";
+
+  var drop = $("drop"), file = $("file");
+  drop.addEventListener("click", function () { file.click(); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("over"); });
+  drop.addEventListener("drop", function (e) { e.preventDefault(); drop.classList.remove("over"); take(e.dataTransfer.files); });
+  file.addEventListener("change", function () { take(file.files); });
+
+  function take(fl) {
+    images = []; pdfBytes = null;
+    $("thumbs").innerHTML = ""; $("status").textContent = "";
+    var list = [].slice.call(fl);
+    var pdf = list.filter(function (f) { return /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name); })[0];
+    if (pdf) {
+      pdfName = pdf.name.replace(/\.pdf$/i, "");
+      var r = new FileReader();
+      r.onload = function () { pdfBytes = new Uint8Array(r.result); ready(); };
+      r.readAsArrayBuffer(pdf);
+      drop.textContent = "✓ " + pdf.name + " — drop something else to replace";
+      return;
+    }
+    var imgs = list.filter(function (f) { return /^image\//.test(f.type); });
+    if (!imgs.length) { $("status").textContent = "Drop images or a PDF."; $("status").className = "note hint-err"; return; }
+    var left = imgs.length;
+    imgs.forEach(function (f, idx) {
+      var r = new FileReader();
+      r.onload = function () {
+        var im = new Image();
+        im.onload = function () {
+          images[idx] = { img: im, name: f.name };
+          var t = document.createElement("img"); t.src = im.src; $("thumbs").appendChild(t);
+          if (--left === 0) ready();
+        };
+        im.onerror = function () { if (--left === 0) ready(); };
+        im.src = r.result;
+      };
+      r.readAsDataURL(f);
+    });
+    drop.textContent = "✓ " + imgs.length + " image" + (imgs.length > 1 ? "s" : "") + " — drop more to replace";
+  }
+
+  function btn(label, fn, wa) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = wa ? "btn wa" : "btn";
+    b.textContent = label;
+    b.addEventListener("click", fn);
+    $("acts").appendChild(b);
+    return b;
+  }
+  function ready() {
+    images = images.filter(Boolean);
+    $("acts").innerHTML = "";
+    $("mode-note").style.display = "block";
+    if (pdfBytes) {
+      $("mode-note").textContent = "PDF loaded — turn its pages into images.";
+      btn("Every page → PNG images", function () { pdfToImages("png"); });
+      btn("Every page → JPG images", function () { pdfToImages("jpeg"); });
+    } else if (images.length) {
+      $("mode-note").textContent = images.length + " image" + (images.length > 1 ? "s" : "") + " loaded — combine or swap formats.";
+      btn("Combine into one PDF", imagesToPdf);
+      btn("→ JPG", function () { swap("image/jpeg", "jpg"); });
+      btn("→ PNG", function () { swap("image/png", "png"); });
+      btn("→ WebP", function () { swap("image/webp", "webp"); });
+    }
+  }
+  function bar(p) { $("bar").style.display = p == null ? "none" : "block"; if (p != null) $("bar").firstElementChild.style.width = p + "%"; }
+
+  function imagesToPdf() {
+    var doc = new jspdf.jsPDF({ unit: "mm", format: "a4" });
+    images.forEach(function (x, i) {
+      if (i) doc.addPage();
+      var W = 210, H = 297, M = 8;
+      var r = Math.min((W - 2 * M) / x.img.width, (H - 2 * M) / x.img.height);
+      var w = x.img.width * r, h = x.img.height * r;
+      var cv = document.createElement("canvas");
+      cv.width = x.img.width; cv.height = x.img.height;
+      var cx = cv.getContext("2d");
+      cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(x.img, 0, 0);
+      doc.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", (W - w) / 2, (H - h) / 2, w, h);
+      bar(Math.round(100 * (i + 1) / images.length));
+    });
+    var name = "images-" + new Date().toISOString().slice(0, 10) + ".pdf";
+    doc.save(name);
+    $("status").textContent = "Saved " + name + " ✓ (" + images.length + " page" + (images.length > 1 ? "s" : "") + ")";
+    $("status").className = "note hint-ok";
+    setTimeout(function () { bar(null); }, 700);
+  }
+
+  function pdfToImages(fmt) {
+    $("status").textContent = "Rendering pages…"; $("status").className = "note";
+    pdfjs.getDocument({ data: pdfBytes.slice(0) }).promise.then(function (doc) {
+      var i = 1;
+      (function next() {
+        if (i > doc.numPages) {
+          $("status").textContent = doc.numPages + " page" + (doc.numPages > 1 ? "s" : "") + " saved as " + fmt.toUpperCase() + " ✓";
+          $("status").className = "note hint-ok";
+          setTimeout(function () { bar(null); }, 700);
+          return;
+        }
+        doc.getPage(i).then(function (pg) {
+          var vp = pg.getViewport({ scale: 2 });
+          var cv = document.createElement("canvas");
+          cv.width = vp.width; cv.height = vp.height;
+          var cx = cv.getContext("2d");
+          cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+          pg.render({ canvasContext: cx, viewport: vp }).promise.then(function () {
+            cv.toBlob(function (blob) {
+              MK.download(blob, pdfName + "-page" + i + "." + (fmt === "jpeg" ? "jpg" : "png"));
+              bar(Math.round(100 * i / doc.numPages));
+              i++; setTimeout(next, 150);
+            }, "image/" + fmt, 0.92);
+          });
+        });
+      })();
+    }).catch(function () { $("status").textContent = "Couldn't read that PDF — it may be encrypted."; $("status").className = "note hint-err"; });
+  }
+
+  function swap(mime, ext) {
+    images.forEach(function (x, i) {
+      var cv = document.createElement("canvas");
+      cv.width = x.img.width; cv.height = x.img.height;
+      var cx = cv.getContext("2d");
+      if (mime === "image/jpeg") { cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); }
+      cx.drawImage(x.img, 0, 0);
+      cv.toBlob(function (blob) {
+        MK.download(blob, x.name.replace(/\.[^.]+$/, "") + "." + ext);
+        bar(Math.round(100 * (i + 1) / images.length));
+      }, mime, 0.92);
+    });
+    $("status").textContent = "Converted " + images.length + " image" + (images.length > 1 ? "s" : "") + " to ." + ext + " ✓";
+    $("status").className = "note hint-ok";
+    setTimeout(function () { bar(null); }, 900);
+  }
+})();
+</script>
+</body>
+</html>

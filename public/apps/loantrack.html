@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Money Owed — Makhie</title>
+<meta name="description" content="Track who owes you: amounts, due dates, WhatsApp reminders, and the moment it's repaid. Memory is not a ledger.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .owing { display: grid; gap: 10px; margin-top: 16px; }
+  .owe { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: #fff; box-shadow: var(--shadow); padding: 13px 16px; }
+  .owe.paid { opacity: .55; }
+  .owe .who { flex: 1; min-width: 0; }
+  .owe .who b { font-size: 14.5px; }
+  .owe .who small { display: block; color: var(--mute); font-size: 12px; margin-top: 2px; }
+  .owe .amt { font-weight: 800; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .owe .amt.late { color: #b3402a; }
+  .owe .acts { display: flex; gap: 6px; }
+  .owe .acts a, .owe .acts button { border: 1px solid var(--line); background: #fff; border-radius: 8px;
+    padding: 6px 10px; font: 600 12px inherit; font-family: inherit; color: var(--ink); cursor: pointer; text-decoration: none; }
+  .owe .acts a:hover, .owe .acts button:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .owe .acts a.wa-r { display: inline-flex; align-items: center; gap: 5px;
+    background: #25D366; border-color: #1DA851; color: #fff; }
+  .owe .acts a.wa-r:hover { background: #1DA851; border-color: #1DA851; color: #fff; }
+  .owe .acts a.wa-r svg { width: 13px; height: 13px; fill: currentColor; }
+  .totalbar { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--ink);
+    margin-top: 16px; padding-top: 12px; }
+  .totalbar b { font-size: 22px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="loancalc.html">Loan Calculator</a>
+      <a class="link on" href="loantrack.html">Money Owed</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Money Owed</h1>
+    <p class="sub">Who owes you, how much, since when — with a WhatsApp reminder one tap away.
+    Sign in and the book follows you across devices.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Add a loan</h3>
+      <label class="f" for="l-who">Who owes you?</label>
+      <input class="f" id="l-who" placeholder="e.g. Thabo M">
+      <label class="f" for="l-amt">Amount</label>
+      <input class="f" id="l-amt" placeholder="R500">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="l-due">Due date</label>
+          <input class="f" id="l-due" type="date">
+        </div>
+        <div>
+          <label class="f" for="l-phone">Their number (for reminders)</label>
+          <input class="f" id="l-phone" placeholder="072 000 0000">
+        </div>
+      </div>
+      <label class="f" for="l-note">Note (optional)</label>
+      <input class="f" id="l-note" placeholder="e.g. Borrowed for transport, will pay month end">
+      <div class="row">
+        <button class="btn" id="l-add" type="button">Add to the book</button>
+        <span class="note" id="l-status"></span>
+      </div>
+      <p class="disc">A loan you record here is a memory made permanent — pair it with a
+      <a href="agree.html">written agreement</a> for anything serious.</p>
+    </div>
+
+    <div class="card">
+      <h3>The book</h3>
+      <div class="owing" id="list"><p class="note">Nothing owed — the book is clean.</p></div>
+      <div class="totalbar"><span class="note">Still owed to you</span><b id="total">R0.00</b></div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — your book is private: on your device, or in your account when signed in.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb, cloud = false, items = [];
+
+  /* Storage: signed-in → makhie_documents rows (kind 'loan'); otherwise localStorage. */
+  function localItems() { try { return JSON.parse(localStorage.getItem("mk.loans") || "[]"); } catch (e) { return []; } }
+  function saveLocal() { try { localStorage.setItem("mk.loans", JSON.stringify(items)); } catch (e) {} }
+
+  MK.onAuth(function (u) {
+    cloud = !!(u && !u.demo && sb);
+    if (cloud) {
+      // Migrate anything recorded on this phone before showing the cloud book,
+      // so signing in never hides a loan. Local only clears once the push lands.
+      var pending = localItems();
+      var rows = pending.map(function (it) {
+        return { client_id: it.id || MK.uid(10), kind: "loan", title: it.who, amount_cents: it.cents,
+          data: { who: it.who, due: it.due, phone: it.phone, note: it.note, paid: !!it.paid } };
+      });
+      var migrated = pending.length ? MK.pushDocs(rows) : Promise.resolve(true);
+      migrated.then(function (ok) {
+        if (ok) { try { localStorage.removeItem("mk.loans"); } catch (e) {} }
+        sb.from("makhie_documents").select("id,client_id,title,amount_cents,data,created_at")
+          .eq("kind", "loan").order("created_at", { ascending: true })
+          .then(function (r) {
+            if (r.error) { cloud = false; items = pending; render(); return; }
+            items = r.data.map(function (d) {
+              var it = { id: d.id, who: d.data.who || d.title, cents: d.amount_cents, due: d.data.due || "",
+                phone: d.data.phone || "", note: d.data.note || "", paid: !!d.data.paid, at: d.created_at };
+              if (d.client_id) it.client_id = d.client_id;
+              return it;
+            });
+            if (!ok) {
+              // Push didn't land — keep local loans in view; they migrate next visit.
+              var seen = {};
+              r.data.forEach(function (d) { if (d.client_id) seen[d.client_id] = 1; });
+              pending.forEach(function (it) { if (!it.id || !seen[it.id]) items.push(it); });
+            }
+            render();
+          });
+      });
+    } else { items = localItems(); render(); }
+  });
+
+  $("l-add").addEventListener("click", function () {
+    var who = $("l-who").value.trim(), cents = MK.parseAmount($("l-amt").value);
+    if (!who || !cents) { $("l-status").textContent = "A name and an amount are needed."; $("l-status").className = "note hint-err"; return; }
+    var it = { who: who, cents: cents, due: $("l-due").value, phone: $("l-phone").value.trim(),
+      note: $("l-note").value.trim(), paid: false, at: new Date().toISOString() };
+    var done = function () {
+      ["l-who","l-amt","l-due","l-phone","l-note"].forEach(function (id) { $(id).value = ""; });
+      $("l-status").textContent = "In the book ✓"; $("l-status").className = "note hint-ok";
+      render();
+      MK.nudge();
+    };
+    if (cloud) {
+      var u = MK.user();
+      sb.from("makhie_documents").insert({
+        user_id: u.id, kind: "loan", title: who, amount_cents: cents,
+        data: { who: who, due: it.due, phone: it.phone, note: it.note, paid: false }
+      }).select("id").single().then(function (r) {
+        if (r.error) throw r.error;
+        it.id = r.data.id; items.push(it); done();
+      }).catch(function () {
+        // Cloud refused or unreachable — keep the loan on this phone instead.
+        it.id = MK.uid(8);
+        var all = localItems(); all.push(it);
+        try { localStorage.setItem("mk.loans", JSON.stringify(all)); } catch (e) {}
+        items.push(it); done();
+        $("l-status").textContent = "Saved on this phone — it will sync next time you're online.";
+      });
+    } else {
+      it.id = MK.uid(8); items.push(it); saveLocal(); done();
+    }
+  });
+
+  function setPaid(it, paid) {
+    it.paid = paid;
+    if (cloud) {
+      sb.from("makhie_documents").update({ data: { who: it.who, due: it.due, phone: it.phone, note: it.note, paid: paid } })
+        .eq("id", it.id).then(function () {});
+    } else saveLocal();
+    render();
+  }
+  function remove(it) {
+    items = items.filter(function (x) { return x !== it; });
+    if (cloud) sb.from("makhie_documents").delete().eq("id", it.id).then(function () {});
+    else saveLocal();
+    render();
+  }
+  function waRemind(it) {
+    var msg = "Hi " + it.who + " — friendly reminder about the " + MK.moneyC(it.cents) +
+      (it.note ? " (" + it.note + ")" : "") +
+      (it.due ? ", due " + it.due : "") + ". Please sort it when you can. — sent with Makhie";
+    var digits = it.phone.replace(/\D/g, "");
+    if (digits.length === 10 && digits[0] === "0") digits = "27" + digits.slice(1);
+    return digits ? "https://wa.me/" + digits + "?text=" + encodeURIComponent(msg) : MK.waLink(msg);
+  }
+
+  function render() {
+    var open = items.filter(function (i) { return !i.paid; });
+    var totalC = open.reduce(function (s, i) { return s + i.cents; }, 0);
+    $("total").textContent = MK.moneyC(totalC);
+    if (!items.length) { $("list").innerHTML = "<p class='note'>Nothing owed — the book is clean.</p>"; return; }
+    var today = new Date().toISOString().slice(0, 10);
+    $("list").innerHTML = "";
+    items.slice().sort(function (a, b) { return (a.paid ? 1 : 0) - (b.paid ? 1 : 0); }).forEach(function (it) {
+      var late = !it.paid && it.due && it.due < today;
+      var el = document.createElement("div");
+      el.className = "owe" + (it.paid ? " paid" : "");
+      el.innerHTML = "<div class='who'><b>" + MK.esc(it.who) + "</b><small>" +
+        (it.due ? (late ? "was due " : "due ") + MK.esc(it.due) : "no due date") +
+        (it.note ? " · " + MK.esc(it.note) : "") + "</small></div>" +
+        "<span class='amt" + (late ? " late" : "") + "'>" + MK.moneyC(it.cents) + "</span>" +
+        "<span class='acts'></span>";
+      var acts = el.querySelector(".acts");
+      if (!it.paid) {
+        var wa = document.createElement("a");
+        wa.className = "wa-r";
+        wa.innerHTML = MK.waIcon + "Remind";
+        wa.target = "_blank"; wa.rel = "noopener"; wa.href = waRemind(it);
+        acts.appendChild(wa);
+        var pd = document.createElement("button");
+        pd.textContent = "Paid ✓"; pd.type = "button";
+        pd.addEventListener("click", function () { setPaid(it, true); });
+        acts.appendChild(pd);
+      } else {
+        var un = document.createElement("button");
+        un.textContent = "Unpaid?"; un.type = "button";
+        un.addEventListener("click", function () { setPaid(it, false); });
+        acts.appendChild(un);
+        var rm = document.createElement("button");
+        rm.textContent = "Remove"; rm.type = "button";
+        rm.addEventListener("click", function () { remove(it); });
+        acts.appendChild(rm);
+      }
+      $("list").appendChild(el);
+    });
+  }
+})();
+</script>
+</body>
+</html>

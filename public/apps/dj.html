@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Quotes &amp; Bookings — Makhie</title>
+<meta name="description" content="For working DJs: quotes with the full brief, invoices, and deposit and full-payment tracking per gig — sent straight to the client on WhatsApp as a PDF.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .kpi b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); }
+  .gigs { display: grid; gap: 12px; margin-top: 14px; }
+  .gig { border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); padding: 14px 16px; }
+  .gig-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .gig-top b { font-size: 14.5px; }
+  .gig-top .fee { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .chip { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    border-radius: 6px; padding: 2.5px 9px; }
+  .chip.quoted { color: var(--warn); background: var(--warn-soft); }
+  .chip.deposit { color: var(--accent-ink); background: var(--accent-soft); }
+  .chip.paid { color: var(--ok); background: var(--ok-soft); }
+  .gig .meta { font-size: 12px; color: var(--mute); margin-top: 3px; }
+  .gig .brief { font-size: 12.5px; color: var(--ink); background: var(--accent-soft); border-radius: 8px;
+    padding: 8px 12px; margin-top: 8px; line-height: 1.55; }
+  .gig .acts { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+  .gig .acts button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 12px;
+    font: 600 12px inherit; font-family: inherit; color: var(--ink); cursor: pointer; transition: border-color .14s, color .14s; }
+  .gig .acts button:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .gig .acts button.wa-mini { display: inline-flex; align-items: center; gap: 5px;
+    background: #25D366; border-color: #1DA851; color: #fff; }
+  .gig .acts button.wa-mini:hover { background: #1DA851; }
+  .gig .acts button.wa-mini svg { width: 13px; height: 13px; fill: currentColor; }
+  .gig .acts button.pay { color: var(--ok); border-color: #bfe6d4; }
+  .gig .acts button.pay:hover { border-color: var(--ok); }
+  .gig .acts button.del { color: var(--mute); }
+  .gig .acts button.del:hover { color: #b3402a; border-color: #b3402a; }
+  .owedline { font-size: 12px; color: var(--warn); font-weight: 700; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="receipts.html">Receipts</a>
+      <a class="link" href="cashbook.html">Cashbook</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">DJ Quotes &amp; Bookings</h1>
+    <p class="sub">Quote with the full brief so there are no arguments at the gig. Invoice like a
+    company. Track every deposit and final payment — and send it all as a PDF on WhatsApp.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>New booking</h3>
+      <label class="f" for="g-dj">Your DJ / business name</label>
+      <input class="f" id="g-dj" placeholder="e.g. DJ Sbu M">
+      <label class="f" for="g-client">Client name</label>
+      <input class="f" id="g-client" placeholder="Who's booking you?">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="g-event">Event</label>
+          <select class="f" id="g-event">
+            <option>Wedding</option><option>Birthday / party</option><option>Club set</option>
+            <option>Corporate</option><option>Festival / outdoor</option><option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="g-date">Date</label>
+          <input class="f" id="g-date" type="date">
+        </div>
+      </div>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="g-venue">Venue</label>
+          <input class="f" id="g-venue" placeholder="Where's the gig?">
+        </div>
+        <div>
+          <label class="f" for="g-time">Set times</label>
+          <input class="f" id="g-time" placeholder="e.g. 20:00 – 01:00">
+        </div>
+      </div>
+      <label class="f" for="g-brief">The brief</label>
+      <textarea class="f" id="g-brief" rows="3" placeholder="Genres, must-plays, do-NOT-plays, MC duties, equipment you bring vs venue's, load-in time…"></textarea>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="g-fee">Full fee</label>
+          <input class="f" id="g-fee" placeholder="R4 500" inputmode="decimal">
+        </div>
+        <div>
+          <label class="f" for="g-dep">Deposit to secure the date</label>
+          <input class="f" id="g-dep" placeholder="R1 500" inputmode="decimal">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="g-add" type="button">Add booking</button>
+        <span class="note" id="g-status"></span>
+      </div>
+      <p class="disc">Deposit rule of thumb: the date is only booked when the deposit lands — the
+      quote says so in writing, so the awkward conversation never has to happen.</p>
+    </div>
+
+    <div class="card">
+      <h3>Your gigs</h3>
+      <div class="kpis">
+        <div class="kpi"><b id="k-booked">R0.00</b><span>Booked value</span></div>
+        <div class="kpi"><b id="k-dep">R0.00</b><span>Deposits held</span></div>
+        <div class="kpi"><b id="k-owed">R0.00</b><span>Still owed</span></div>
+      </div>
+      <div class="gigs" id="gigs"><p class="note" style="margin-top:10px">No gigs yet — add your next booking.</p></div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — your gig book is private: on your device, or in your account when signed in.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb, cloud = false, items = [];
+
+  function localItems() { try { return JSON.parse(localStorage.getItem("mk.dj") || "[]"); } catch (e) { return []; } }
+  function saveLocal() { try { localStorage.setItem("mk.dj", JSON.stringify(items)); } catch (e) {} }
+  function gigData(it) {
+    return { client: it.client, phone: it.phone, event: it.event, venue: it.venue, date: it.date,
+      time: it.time, brief: it.brief, dj: it.dj, feeC: it.feeC, depC: it.depC, status: it.status,
+      quoteNo: it.quoteNo, depositPaidAt: it.depositPaidAt || null, paidAt: it.paidAt || null };
+  }
+
+  /* ---------- load (cloud when signed in, local otherwise) ---------- */
+  MK.onAuth(function (u) {
+    cloud = !!(u && !u.demo && sb);
+    if (cloud) {
+      var pending = localItems();
+      var rows = pending.map(function (it) {
+        return { client_id: it.id || MK.uid(10), kind: "gig", title: it.client + " — " + it.event,
+          amount_cents: it.feeC, data: gigData(it) };
+      });
+      var migrated = pending.length ? MK.pushDocs(rows) : Promise.resolve(true);
+      migrated.then(function (ok) {
+        if (ok) { try { localStorage.removeItem("mk.dj"); } catch (e) {} }
+        sb.from("makhie_documents").select("id,client_id,title,amount_cents,data,created_at")
+          .eq("kind", "gig").order("created_at", { ascending: true })
+          .then(function (r) {
+            if (r.error) { cloud = false; items = pending; render(); return; }
+            items = r.data.map(function (d) {
+              var x = d.data || {};
+              return { id: d.id, client: x.client || d.title, dj: x.dj || "", event: x.event || "",
+                venue: x.venue || "", date: x.date || "", time: x.time || "", brief: x.brief || "",
+                feeC: d.amount_cents, depC: x.depC || 0, status: x.status || "quoted",
+                quoteNo: x.quoteNo || "", depositPaidAt: x.depositPaidAt, paidAt: x.paidAt };
+            });
+            if (!ok) {
+              var seen = {};
+              r.data.forEach(function (d) { if (d.client_id) seen[d.client_id] = 1; });
+              pending.forEach(function (it) { if (!it.id || !seen[it.id]) items.push(it); });
+            }
+            render();
+          });
+      });
+    } else { items = localItems(); render(); }
+  });
+
+  /* ---------- add ---------- */
+  $("g-add").addEventListener("click", function () {
+    var client = $("g-client").value.trim(), feeC = MK.parseAmount($("g-fee").value);
+    if (!client || !feeC) { $("g-status").textContent = "Client and full fee are needed."; $("g-status").className = "note hint-err"; return; }
+    var it = {
+      id: MK.uid(10), dj: $("g-dj").value.trim(), client: client, event: $("g-event").value,
+      venue: $("g-venue").value.trim(), date: $("g-date").value, time: $("g-time").value.trim(),
+      brief: $("g-brief").value.trim(), feeC: feeC, depC: MK.parseAmount($("g-dep").value),
+      status: "quoted", quoteNo: "GIG-" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" + MK.uid(3).toUpperCase()
+    };
+    var done = function () {
+      ["g-client","g-venue","g-time","g-brief","g-fee","g-dep"].forEach(function (id) { $(id).value = ""; });
+      $("g-status").textContent = "Booked in ✓ — now send the quote."; $("g-status").className = "note hint-ok";
+      render();
+    };
+    if (cloud) {
+      sb.from("makhie_documents").insert({
+        user_id: MK.user().id, kind: "gig", title: it.client + " — " + it.event,
+        amount_cents: it.feeC, data: gigData(it)
+      }).select("id").single().then(function (r) {
+        if (r.error) throw r.error;
+        it.id = r.data.id; items.push(it); done();
+      }).catch(function () { $("g-status").textContent = "Couldn't save online — try again."; $("g-status").className = "note hint-err"; });
+    } else { items.push(it); saveLocal(); done(); }
+    try { localStorage.setItem("mk.dj.name", it.dj); } catch (e) {}
+  });
+
+  function persist(it) {
+    if (cloud) sb.from("makhie_documents").update({ data: gigData(it) }).eq("id", it.id).then(function () {});
+    else saveLocal();
+    render();
+  }
+  function removeGig(it) {
+    items = items.filter(function (x) { return x !== it; });
+    if (cloud) sb.from("makhie_documents").delete().eq("id", it.id).then(function () {});
+    else saveLocal();
+    render();
+  }
+
+  /* ---------- papers ---------- */
+  function quotePdf(it) {
+    var p = MK.pdfStart("DJ quotation", [it.quoteNo, it.date || "", "Valid 7 days"]);
+    p.kv("From", it.dj || "—");
+    p.kv("For", it.client);
+    p.kv("Event", it.event + (it.venue ? " — " + it.venue : ""));
+    p.kv("Date & set", (it.date || "TBC") + (it.time ? " · " + it.time : ""));
+    p.h("The brief");
+    p.p(it.brief || "Brief to be confirmed with the client.");
+    p.h("The money");
+    p.kv("Full fee", MK.moneyC(it.feeC));
+    if (it.depC) {
+      p.kv("Deposit to secure the date", MK.moneyC(it.depC));
+      p.kv("Balance on the day", MK.moneyC(Math.max(0, it.feeC - it.depC)));
+    }
+    p.p("The date is only secured once the deposit is received. The brief above forms part of this quote — changes on the day are quoted separately. Pay securely as arranged.", true);
+    p.finish("quote-" + it.quoteNo + ".pdf");
+    MK.shareLastPdf("DJ quotation " + it.quoteNo + " for " + it.client + " — " + MK.moneyC(it.feeC) + ". Brief included. PDF attached.");
+  }
+  function invoicePdf(it) {
+    var paidDep = it.status !== "quoted" ? Math.min(it.depC, it.feeC) : 0;
+    var due = it.status === "paid" ? 0 : it.feeC - paidDep;
+    var p = MK.pdfStart("Invoice", ["INV-" + it.quoteNo, it.date || ""]);
+    p.kv("From", it.dj || "—");
+    p.kv("Billed to", it.client);
+    p.kv("Event", it.event + (it.venue ? " — " + it.venue : "") + (it.date ? " · " + it.date : ""));
+    p.h("Amounts");
+    p.kv("Full fee", MK.moneyC(it.feeC));
+    if (paidDep) p.kv("Deposit received", MK.moneyC(paidDep) + (it.depositPaidAt ? "  (" + it.depositPaidAt.slice(0, 10) + ")" : ""));
+    p.kv(it.status === "paid" ? "Balance" : "Balance due", it.status === "paid" ? "PAID IN FULL" : MK.moneyC(due));
+    p.p("Thank you for the booking. Pay securely as arranged; this invoice reflects payments received to date.", true);
+    p.finish("invoice-" + it.quoteNo + ".pdf");
+    MK.shareLastPdf("Invoice INV-" + it.quoteNo + " for " + it.client + (due ? " — balance due " + MK.moneyC(due) : " — paid in full") + ". PDF attached.");
+  }
+
+  /* ---------- render ---------- */
+  var CHIP = { quoted: "Quoted", deposit: "Deposit in", paid: "Paid in full" };
+  function render() {
+    var bookedC = 0, depHeldC = 0, owedC = 0;
+    items.forEach(function (it) {
+      bookedC += it.feeC;
+      if (it.status === "deposit") { depHeldC += Math.min(it.depC, it.feeC); owedC += Math.max(0, it.feeC - it.depC); }
+      else if (it.status === "quoted") owedC += it.feeC;
+    });
+    $("k-booked").textContent = MK.moneyC(bookedC);
+    $("k-dep").textContent = MK.moneyC(depHeldC);
+    $("k-owed").textContent = MK.moneyC(owedC);
+    var box = $("gigs");
+    if (!items.length) { box.innerHTML = "<p class='note' style='margin-top:10px'>No gigs yet — add your next booking.</p>"; return; }
+    box.innerHTML = "";
+    items.slice().sort(function (a, b) { return (a.date || "9999") < (b.date || "9999") ? -1 : 1; }).forEach(function (it) {
+      var el = document.createElement("div");
+      el.className = "gig";
+      var owed = it.status === "paid" ? 0 : it.feeC - (it.status === "deposit" ? Math.min(it.depC, it.feeC) : 0);
+      el.innerHTML =
+        "<div class='gig-top'><b>" + MK.esc(it.client) + "</b>" +
+        "<span class='chip " + it.status + "'>" + CHIP[it.status] + "</span>" +
+        "<span class='fee'>" + MK.moneyC(it.feeC) + "</span></div>" +
+        "<div class='meta'>" + MK.esc(it.event) + (it.venue ? " · " + MK.esc(it.venue) : "") +
+          (it.date ? " · " + MK.esc(it.date) : "") + (it.time ? " · " + MK.esc(it.time) : "") + "</div>" +
+        (it.brief ? "<div class='brief'>" + MK.esc(it.brief) + "</div>" : "") +
+        (owed && it.status !== "quoted" ? "<div class='owedline'>Balance outstanding: " + MK.moneyC(owed) + "</div>" : "") +
+        "<div class='acts'></div>";
+      var acts = el.querySelector(".acts");
+      function btn(label, cls, fn) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = cls || "";
+        if (cls === "wa-mini") b.innerHTML = MK.waIcon + label; else b.textContent = label;
+        b.addEventListener("click", fn);
+        acts.appendChild(b);
+      }
+      btn("Send quote (PDF)", "wa-mini", function () { quotePdf(it); });
+      btn("Send invoice (PDF)", "wa-mini", function () { invoicePdf(it); });
+      if (it.status === "quoted" && it.depC) btn("Deposit received ✓", "pay", function () {
+        it.status = "deposit"; it.depositPaidAt = new Date().toISOString(); persist(it);
+      });
+      if (it.status !== "paid") btn("Paid in full ✓", "pay", function () {
+        it.status = "paid"; it.paidAt = new Date().toISOString(); persist(it);
+      });
+      if (it.status === "paid") btn("Reopen", "", function () {
+        it.status = it.depositPaidAt ? "deposit" : "quoted"; it.paidAt = null; persist(it);
+      });
+      btn("Remove", "del", function () { removeGig(it); });
+      box.appendChild(el);
+    });
+  }
+
+  /* ---------- boot ---------- */
+  try { var dj = localStorage.getItem("mk.dj.name"); if (dj) $("g-dj").value = dj; } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investor Pitch Board — Makhie</title>
+<meta name="description" content="Pitch to a stage of possible investors. 20 seconds of audio, 30 days on air, ideas readable any time. Investors respond with finance, resources, pain points and needs.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .pitchlist { display: grid; gap: 16px; margin-top: 22px; }
+  .pitch-card h3 { font-size: 16px; }
+  .pitch-meta { font-size: 12px; color: var(--mute); margin-top: 2px; }
+  .pitch-idea { margin-top: 10px; font-size: 13.5px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; }
+  .pitch-contact { margin-top: 10px; font-size: 12.5px; color: var(--mute); }
+  .pitch-contact a { color: var(--accent-ink); font-weight: 600; }
+  audio { width: 100%; max-width: 380px; margin-top: 10px; display: block; }
+  .expired { font-size: 12px; color: var(--mute); font-style: italic; margin-top: 8px; }
+  .resp { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+  .resp-item { font-size: 13px; line-height: 1.55; margin-top: 8px; padding-left: 10px; border-left: 2.5px solid var(--line); }
+  .resp-item b { font-size: 12px; }
+  .resp-item .tag { font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    border-radius: 5px; padding: 1.5px 7px; margin-left: 6px; }
+  .tag.finance { color: var(--ok); background: var(--ok-soft); }
+  .tag.resources { color: var(--accent-ink); background: var(--accent-soft); }
+  .tag.pain_point { color: #b3402a; background: #fdf0ec; }
+  .tag.need { color: var(--warn); background: var(--warn-soft); }
+  .rec-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #b3402a; margin-right: 7px;
+    animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .15; } }
+  #caution-modal .mk-modal { max-width: 460px; text-align: center; }
+  #caution-modal h3 { font-size: 15px; letter-spacing: .04em; line-height: 1.7; color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="pitch.html">Pitch Builder</a>
+      <a class="link on" href="stage.html">The pitch board</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Investor Pitch Board</h1>
+    <p class="sub">Step up and pitch to whoever is in the room — investors, buyers, partners.
+    Your 20-second voice pitch stays on air for 30 days; the written idea stays readable after
+    that. People respond with finance, resources, their pain points and their needs.</p>
+    <div class="row">
+      <button class="btn" id="open-post" type="button">Step on stage</button>
+      <span class="note" id="stage-note"></span>
+    </div>
+  </div>
+
+  <div class="pitchlist" id="list"><p class="note">Loading the room…</p></div>
+
+  <footer class="site">Makhie — pitches are public by design. Share what you're comfortable defending.</footer>
+</div>
+
+<!-- Post form modal -->
+<div class="mk-overlay" id="post-modal">
+  <div class="mk-modal" style="max-width:520px">
+    <h3>Your pitch</h3>
+    <input class="f" id="n-name" placeholder="Your name / business">
+    <input class="f" id="n-headline" placeholder="One-line headline (e.g. Standby catering for 200 in 24h)">
+    <textarea class="f" id="n-idea" rows="5" placeholder="The idea, the plan, the ask — investors read this any time."></textarea>
+    <input class="f" id="n-phone" placeholder="Contact number (optional)">
+    <input class="f" id="n-email" placeholder="Contact email (optional)">
+    <input class="f" id="n-link" placeholder="Link — website / social (optional)">
+    <div class="row" style="margin-top:4px">
+      <button class="btn quiet" id="rec-btn" type="button">● Record 20s voice pitch</button>
+      <span class="note" id="rec-note">Optional — audio stays up 30 days</span>
+    </div>
+    <audio id="rec-play" controls style="display:none"></audio>
+    <div class="row">
+      <button class="btn" id="post-go" type="button">Post to the pitch board</button>
+      <button class="btn quiet" id="post-cancel" type="button">Cancel</button>
+    </div>
+    <p class="note" id="post-status"></p>
+  </div>
+</div>
+
+<!-- The share-caution notice: blurs the background, must be acknowledged. -->
+<div class="mk-overlay" id="caution-modal">
+  <div class="mk-modal">
+    <h3>IDEAS DEEMED TO BE HIGHLY VALUABLE TO YOUR BUSINESS SHOULD BE CONSIDERED TO BE FIT TO SHARE OR NOT.</h3>
+    <p class="note">The pitch board is public. Anyone in the room can read and hear what you post —
+    share the version of your idea you're comfortable defending in the open.</p>
+    <div class="row" style="justify-content:center">
+      <button class="btn" id="caution-ok" type="button">I understand — continue</button>
+      <button class="btn quiet" id="caution-back" type="button">Go back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Respond modal -->
+<div class="mk-overlay" id="resp-modal">
+  <div class="mk-modal">
+    <h3>Respond to this pitch</h3>
+    <input class="f" id="r-name" placeholder="Your name / firm">
+    <select class="f" id="r-kind">
+      <option value="finance">I can offer finance</option>
+      <option value="resources">I can offer resources</option>
+      <option value="pain_point">This is my pain point</option>
+      <option value="need">I have a need like this</option>
+    </select>
+    <textarea class="f" id="r-msg" rows="3" placeholder="Say what you can offer or what you need."></textarea>
+    <input class="f" id="r-contact" placeholder="How they can reach you (optional)">
+    <div class="row">
+      <button class="btn" id="resp-go" type="button">Send response</button>
+      <button class="btn quiet" id="resp-cancel" type="button">Cancel</button>
+    </div>
+    <p class="note" id="resp-status"></p>
+  </div>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb;
+  var BUCKET = "makhie-audio";
+  var DAY30 = 30 * 24 * 3600 * 1000;
+
+  function show(id) { $(id).classList.add("open"); }
+  function hide(id) { $(id).classList.remove("open"); }
+
+  /* ---------- the room ---------- */
+  function audioUrl(path) { return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl; }
+  function loadRoom() {
+    if (!sb) { $("list").innerHTML = "<p class='note'>The pitch board needs a connection — you appear to be offline.</p>"; return; }
+    Promise.all([
+      sb.from("makhie_pitches").select("*").order("created_at", { ascending: false }).limit(60),
+      sb.from("makhie_pitch_responses").select("*").order("created_at", { ascending: true }).limit(400)
+    ]).then(function (rs) {
+      if (rs[0].error) throw rs[0].error;
+      var pitches = rs[0].data || [];
+      var resps = (rs[1].data || []);
+      if (!pitches.length) {
+        $("list").innerHTML = "<div class='card'><h3>The room is quiet.</h3><p>No pitches yet — be the first voice on the pitch board.</p></div>";
+        return;
+      }
+      var byPitch = {};
+      resps.forEach(function (r) { (byPitch[r.pitch_id] = byPitch[r.pitch_id] || []).push(r); });
+      var KIND = { finance: "Finance", resources: "Resources", pain_point: "Pain point", need: "Need" };
+      $("list").innerHTML = pitches.map(function (p) {
+        var age = Date.now() - new Date(p.created_at).getTime();
+        var live = p.audio_path && age < DAY30;
+        var c = p.contact || {};
+        var rr = byPitch[p.id] || [];
+        return "<div class='card pitch-card'>" +
+          "<h3>" + MK.esc(p.headline) + "</h3>" +
+          "<div class='pitch-meta'>" + MK.esc(p.name) + " · " + new Date(p.created_at).toLocaleDateString() +
+            (live ? " · <b style='color:var(--ok)'>on air</b>" : "") + "</div>" +
+          "<div class='pitch-idea'>" + MK.esc(p.idea) + "</div>" +
+          (live ? "<audio controls preload='none' src='" + MK.esc(audioUrl(p.audio_path)) + "'></audio>" :
+            (p.audio_path ? "<div class='expired'>The 30-day voice pitch has left the air — the idea stays.</div>" : "")) +
+          "<div class='pitch-contact'>" +
+            (c.phone ? "☎ " + MK.esc(c.phone) + " · " : "") +
+            (c.email ? "<a href='mailto:" + MK.esc(c.email) + "'>" + MK.esc(c.email) + "</a> · " : "") +
+            (c.link ? "<a href='" + MK.esc(/^https?:\/\//i.test(c.link) ? c.link : "https://" + c.link) + "' target='_blank' rel='noopener nofollow'>" + MK.esc(c.link) + "</a>" : "") +
+          "</div>" +
+          "<div class='resp'>" +
+            rr.map(function (r) {
+              return "<div class='resp-item'><b>" + MK.esc(r.investor_name) + "</b>" +
+                "<span class='tag " + MK.esc(r.kind) + "'>" + MK.esc(KIND[r.kind] || "Response") + "</span><br>" +
+                MK.esc(r.message) + (r.contact ? "<br><span class='note'>" + MK.esc(r.contact) + "</span>" : "") + "</div>";
+            }).join("") +
+            "<div class='row'><button class='btn quiet small resp-open' data-id='" + p.id + "'>Respond — finance, resources, pain point, need</button></div>" +
+          "</div>" +
+        "</div>";
+      }).join("");
+      [].forEach.call(document.querySelectorAll(".resp-open"), function (b) {
+        b.addEventListener("click", function () { respTo = b.getAttribute("data-id"); show("resp-modal"); });
+      });
+    }).catch(function () {
+      $("list").innerHTML = "<p class='note hint-err'>Couldn't load the pitch board — check your connection and reload.</p>";
+    });
+  }
+  loadRoom();
+
+  /* ---------- stepping on stage ---------- */
+  // The caution notice comes FIRST: blurred background, explicit acknowledgement.
+  $("open-post").addEventListener("click", function () { show("caution-modal"); });
+  $("caution-back").addEventListener("click", function () { hide("caution-modal"); });
+  $("caution-ok").addEventListener("click", function () {
+    hide("caution-modal");
+    // Pre-fill from the Pitch Builder draft if one rode along.
+    try {
+      var d = JSON.parse(localStorage.getItem("mk.pitch.draft") || "null");
+      if (d && !$("n-idea").value) { $("n-idea").value = d.script || ""; }
+    } catch (e) {}
+    show("post-modal");
+  });
+  $("post-cancel").addEventListener("click", function () { hide("post-modal"); stopRec(true); });
+
+  /* 20-second recorder */
+  var mediaRec = null, recChunks = [], recBlob = null, recTimer = null;
+  function stopRec(discard) {
+    if (mediaRec && mediaRec.state !== "inactive") mediaRec.stop();
+    clearTimeout(recTimer);
+    if (discard) { recBlob = null; $("rec-play").style.display = "none"; $("rec-btn").innerHTML = "● Record 20s voice pitch"; }
+  }
+  $("rec-btn").addEventListener("click", function () {
+    if (mediaRec && mediaRec.state === "recording") { stopRec(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      $("rec-note").textContent = "Recording isn't available in this browser."; return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      recChunks = [];
+      mediaRec = new MediaRecorder(stream);
+      mediaRec.ondataavailable = function (e) { if (e.data.size) recChunks.push(e.data); };
+      mediaRec.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        recBlob = new Blob(recChunks, { type: mediaRec.mimeType || "audio/webm" });
+        $("rec-play").src = URL.createObjectURL(recBlob);
+        $("rec-play").style.display = "block";
+        $("rec-btn").innerHTML = "● Re-record";
+        $("rec-note").textContent = "Recorded — listen back before you post.";
+      };
+      mediaRec.start();
+      $("rec-btn").innerHTML = "<span class='rec-dot'></span>Recording… tap to stop";
+      $("rec-note").textContent = "20 seconds max — the clock is running.";
+      recTimer = setTimeout(function () { stopRec(); }, 20000);
+    }).catch(function () {
+      $("rec-note").textContent = "Microphone blocked — allow access to record.";
+    });
+  });
+
+  $("post-go").addEventListener("click", function () {
+    var name = $("n-name").value.trim(), head = $("n-headline").value.trim(), idea = $("n-idea").value.trim();
+    var st = $("post-status");
+    if (!name || !head || !idea) { st.textContent = "Name, headline and the idea are needed."; st.className = "note hint-err"; return; }
+    if (!sb) { st.textContent = "No connection."; st.className = "note hint-err"; return; }
+    $("post-go").disabled = true;
+    st.className = "note"; st.textContent = recBlob ? "Uploading your voice…" : "Posting…";
+    var audioPath = null;
+    var up = Promise.resolve();
+    if (recBlob) {
+      audioPath = MK.uid(10) + ".webm";
+      up = sb.storage.from(BUCKET).upload(audioPath, recBlob, { contentType: recBlob.type || "audio/webm" })
+        .then(function (r) { if (r.error) throw r.error; });
+    }
+    up.then(function () {
+      var u = MK.user();
+      return sb.from("makhie_pitches").insert({
+        user_id: (u && !u.demo) ? u.id : null,
+        name: name, headline: head, idea: idea,
+        contact: { phone: $("n-phone").value.trim(), email: $("n-email").value.trim(), link: $("n-link").value.trim() },
+        audio_path: audioPath
+      });
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      hide("post-modal");
+      $("post-go").disabled = false;
+      $("stage-note").textContent = "You're on the pitch board ✓";
+      stopRec(true);
+      ["n-name","n-headline","n-idea","n-phone","n-email","n-link"].forEach(function (id) { $(id).value = ""; });
+      loadRoom();
+    }).catch(function (e) {
+      $("post-go").disabled = false;
+      st.className = "note hint-err";
+      st.textContent = "Couldn't post: " + ((e && e.message) || "unknown error");
+    });
+  });
+
+  /* ---------- responding ---------- */
+  var respTo = null;
+  $("resp-cancel").addEventListener("click", function () { hide("resp-modal"); });
+  $("resp-go").addEventListener("click", function () {
+    var st = $("resp-status");
+    var name = $("r-name").value.trim(), msg = $("r-msg").value.trim();
+    if (!name || !msg) { st.textContent = "Your name and a message are needed."; st.className = "note hint-err"; return; }
+    $("resp-go").disabled = true;
+    sb.from("makhie_pitch_responses").insert({
+      pitch_id: respTo, investor_name: name, kind: $("r-kind").value,
+      message: msg, contact: $("r-contact").value.trim()
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      $("resp-go").disabled = false;
+      hide("resp-modal");
+      ["r-name","r-msg","r-contact"].forEach(function (id) { $(id).value = ""; });
+      loadRoom();
+    }).catch(function (e) {
+      $("resp-go").disabled = false;
+      st.className = "note hint-err";
+      st.textContent = "Couldn't send: " + ((e && e.message) || "unknown error");
+    });
+  });
+
+  [].forEach.call(document.querySelectorAll(".mk-overlay"), function (ov) {
+    ov.addEventListener("click", function (e) { if (e.target === ov && ov.id !== "caution-modal") ov.classList.remove("open"); });
+  });
+})();
+</script>
+</body>
+</html>

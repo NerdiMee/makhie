@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Currency & Crypto — Makhie</title>
+<meta name="description" content="Live currency conversion into rand — any currency to ZAR — plus real-time crypto prices. Free data, refreshed on demand.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .conv { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; margin-top: 6px; }
+  .conv .swap { border: 1px solid var(--line); background: #fff; border-radius: 10px; width: 42px; height: 42px;
+    font-size: 16px; cursor: pointer; color: var(--mute); }
+  .conv .swap:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .stamp { font-size: 11.5px; color: var(--mute); margin-top: 10px; }
+  .stamp.stale { color: var(--warn); font-weight: 600; }
+  .coin { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .coin b { flex: 1; font-size: 13.5px; }
+  .coin b small { color: var(--mute); font-weight: 500; margin-left: 6px; text-transform: uppercase; }
+  .coin .px { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .coin .chg { width: 74px; text-align: right; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .chg.up { color: var(--ok); } .chg.down { color: #b3402a; }
+  .bigout { font-size: 30px; font-weight: 900; letter-spacing: -.02em; color: var(--accent-ink);
+    font-variant-numeric: tabular-nums; margin-top: 10px; word-break: break-all; }
+  .rateline { font-size: 12.5px; color: var(--mute); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="loancalc.html">Loan Calculator</a>
+      <a class="link on" href="ratecheck.html">Currency & Crypto</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Currency & Crypto</h1>
+    <p class="sub">What is it worth in rand? Live rates for over 150 currencies and the major
+    cryptocurrencies — checked against free public data, refreshed whenever you ask.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>Currency → Rand</h3>
+      <div class="conv">
+        <div>
+          <label class="f" for="c-amt">Amount</label>
+          <input class="f" id="c-amt" inputmode="decimal" value="100">
+        </div>
+        <button class="swap" id="c-swap" type="button" title="Swap direction" aria-label="Swap direction">⇅</button>
+        <div>
+          <label class="f" for="c-cur">Currency</label>
+          <select class="f" id="c-cur"><option value="USD">USD</option></select>
+        </div>
+      </div>
+      <div class="bigout" id="c-out">—</div>
+      <div class="rateline" id="c-rate"></div>
+      <div class="row">
+        <button class="btn quiet small" id="c-refresh" type="button">Refresh rates</button>
+        <a class="btn wa small" id="wa-fiat" target="_blank" rel="noopener">Share rate</a>
+      </div>
+      <p class="stamp" id="c-stamp">Fetching live rates…</p>
+      <p class="disc">Mid-market reference rates — banks, apps and money changers add their own
+      margin on top. Not financial advice.</p>
+    </div>
+
+    <div class="card">
+      <h3>Crypto in Rand</h3>
+      <div class="conv">
+        <div>
+          <label class="f" for="k-amt">Amount</label>
+          <input class="f" id="k-amt" inputmode="decimal" value="0.01">
+        </div>
+        <button class="swap" id="k-swap" type="button" title="Swap direction" aria-label="Swap direction">⇅</button>
+        <div>
+          <label class="f" for="k-coin">Coin</label>
+          <select class="f" id="k-coin"></select>
+        </div>
+      </div>
+      <div class="bigout" id="k-out">—</div>
+      <div class="rateline" id="k-rate"></div>
+      <div class="row">
+        <a class="btn wa small" id="wa-crypto" target="_blank" rel="noopener">Share price</a>
+      </div>
+      <div id="board" style="margin-top:16px"></div>
+      <p class="stamp" id="k-stamp">Fetching live prices…</p>
+      <p class="disc">Crypto prices swing hard and fast; a price is history the moment you read
+      it. Only put in what you can afford to lose. Not financial advice.</p>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:18px">Working out what borrowing in rand would cost? Try
+  <a href="loans.html">Loans &amp; Bonds</a>.</p>
+
+  <footer class="site">Makhie — rates from open public sources (ECB-linked and CoinGecko); no accounts, no tracking.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  var COINS = [
+    { id: "bitcoin", sym: "BTC", name: "Bitcoin" },
+    { id: "ethereum", sym: "ETH", name: "Ethereum" },
+    { id: "tether", sym: "USDT", name: "Tether" },
+    { id: "binancecoin", sym: "BNB", name: "BNB" },
+    { id: "solana", sym: "SOL", name: "Solana" },
+    { id: "ripple", sym: "XRP", name: "XRP" },
+    { id: "cardano", sym: "ADA", name: "Cardano" },
+    { id: "dogecoin", sym: "DOGE", name: "Dogecoin" },
+    { id: "usd-coin", sym: "USDC", name: "USD Coin" }
+  ];
+
+  /* ---------------- state + cache ---------------- */
+  var fiat = null;   // { rates: {USD: perZAR...}, at: ms }  (rates = 1 ZAR in X)
+  var crypto = null; // { prices: {bitcoin: {zar, chg}}, at: ms }
+  function cacheGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function cacheSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // en-US grouping (comma thousands, point decimals), then thousands commas
+  // become spaces, SA style: 1 604.06 — the decimal point survives.
+  function fmtR(n) {
+    if (!isFinite(n)) return "—";
+    var opts = n >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumSignificantDigits: 4 };
+    return "R" + n.toLocaleString("en-US", opts).replace(/,/g, " ");
+  }
+  function fmtN(n, dp) {
+    if (!isFinite(n)) return "—";
+    return n.toLocaleString("en-US", { maximumFractionDigits: dp != null ? dp : 6 }).replace(/,/g, " ");
+  }
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + "h ago";
+  }
+  function stamp(el, at, live) {
+    var e = $(el);
+    var old = Date.now() - at > 3600 * 1000;
+    e.textContent = (live ? "Live rates · updated " : "Offline — showing saved rates from ") + ago(at);
+    e.className = "stamp" + (old || !live ? " stale" : "");
+  }
+
+  /* ---------------- fiat rates ---------------- */
+  function loadFiat(force) {
+    var cached = cacheGet("mk.rates.fiat");
+    if (cached && !force && Date.now() - cached.at < 30 * 60 * 1000) { fiat = cached; fiatReady(true); return; }
+    fetch("https://open.er-api.com/v6/latest/ZAR").then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || d.result !== "success" || !d.rates) throw new Error("bad");
+      fiat = { rates: d.rates, at: Date.now() };
+      cacheSet("mk.rates.fiat", fiat);
+      fiatReady(true);
+    }).catch(function () {
+      // Fallback: frankfurter (ECB, fewer currencies).
+      fetch("https://api.frankfurter.app/latest?from=ZAR").then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.rates) throw new Error("bad");
+        d.rates.ZAR = 1;
+        fiat = { rates: d.rates, at: Date.now() };
+        cacheSet("mk.rates.fiat", fiat);
+        fiatReady(true);
+      }).catch(function () {
+        if (cached) { fiat = cached; fiatReady(false); }
+        else { $("c-stamp").textContent = "Couldn't fetch rates — check your connection and refresh."; $("c-stamp").className = "stamp stale"; }
+      });
+    });
+  }
+  var POPULAR = ["USD", "EUR", "GBP", "CNY", "INR", "JPY", "AED", "NGN", "KES", "BWP", "MZN", "ZWL", "AUD", "CAD", "CHF", "BRL"];
+  function fiatReady(live) {
+    var sel = $("c-cur"), prev = sel.value || "USD";
+    var codes = Object.keys(fiat.rates).filter(function (c) { return c !== "ZAR"; }).sort();
+    var pop = POPULAR.filter(function (c) { return codes.indexOf(c) > -1; });
+    var rest = codes.filter(function (c) { return pop.indexOf(c) < 0; });
+    sel.innerHTML = "<optgroup label='Popular'>" +
+      pop.map(function (c) { return "<option value='" + c + "'>" + c + "</option>"; }).join("") +
+      "</optgroup><optgroup label='All currencies'>" +
+      rest.map(function (c) { return "<option value='" + c + "'>" + c + "</option>"; }).join("") + "</optgroup>";
+    sel.value = codes.indexOf(prev) > -1 ? prev : "USD";
+    stamp("c-stamp", fiat.at, live);
+    convFiat();
+  }
+  var toZar = true; // direction: currency → ZAR
+  function convFiat() {
+    if (!fiat) return;
+    var amt = parseFloat(String($("c-amt").value).replace(/[\s,]/g, ""));
+    var cur = $("c-cur").value;
+    var perZar = fiat.rates[cur]; // 1 ZAR = perZar CUR
+    if (!isFinite(amt) || !perZar) { $("c-out").textContent = "—"; $("c-rate").textContent = ""; return; }
+    if (toZar) {
+      $("c-out").textContent = fmtR(amt / perZar);
+      $("c-rate").textContent = "1 " + cur + " = " + fmtR(1 / perZar) + " · " + fmtN(amt, 2) + " " + cur + " into rand";
+    } else {
+      $("c-out").textContent = fmtN(amt * perZar, 2) + " " + cur;
+      $("c-rate").textContent = "R1 = " + fmtN(perZar, 4) + " " + cur + " · R" + fmtN(amt, 2) + " into " + cur;
+    }
+  }
+  $("c-swap").addEventListener("click", function () { toZar = !toZar; convFiat(); });
+  $("c-amt").addEventListener("input", convFiat);
+  $("c-cur").addEventListener("input", convFiat);
+  $("c-refresh").addEventListener("click", function () { $("c-stamp").textContent = "Refreshing…"; loadFiat(true); loadCrypto(true); });
+
+  /* ---------------- crypto ---------------- */
+  function loadCrypto(force) {
+    var cached = cacheGet("mk.rates.crypto");
+    if (cached && !force && Date.now() - cached.at < 5 * 60 * 1000) { crypto = cached; cryptoReady(true); return; }
+    var ids = COINS.map(function (c) { return c.id; }).join(",");
+    fetch("https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=zar&include_24hr_change=true")
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.bitcoin) throw new Error("bad");
+        var prices = {};
+        COINS.forEach(function (c) { if (d[c.id]) prices[c.id] = { zar: d[c.id].zar, chg: d[c.id].zar_24h_change }; });
+        crypto = { prices: prices, at: Date.now() };
+        cacheSet("mk.rates.crypto", crypto);
+        cryptoReady(true);
+      }).catch(function () {
+        if (cached) { crypto = cached; cryptoReady(false); }
+        else { $("k-stamp").textContent = "Couldn't fetch prices — check your connection and refresh."; $("k-stamp").className = "stamp stale"; }
+      });
+  }
+  function cryptoReady(live) {
+    var sel = $("k-coin"), prev = sel.value;
+    sel.innerHTML = COINS.filter(function (c) { return crypto.prices[c.id]; })
+      .map(function (c) { return "<option value='" + c.id + "'>" + c.sym + " — " + c.name + "</option>"; }).join("");
+    if (prev && crypto.prices[prev]) sel.value = prev;
+    $("board").innerHTML = COINS.filter(function (c) { return crypto.prices[c.id]; }).map(function (c) {
+      var p = crypto.prices[c.id];
+      var chg = p.chg == null ? null : p.chg;
+      return "<div class='coin'><b>" + c.sym + "<small>" + c.name + "</small></b>" +
+        "<span class='px'>" + fmtR(p.zar) + "</span>" +
+        (chg == null ? "<span class='chg'>—</span>" :
+          "<span class='chg " + (chg >= 0 ? "up" : "down") + "'>" + (chg >= 0 ? "▲" : "▼") + " " + Math.abs(chg).toFixed(1) + "%</span>") +
+        "</div>";
+    }).join("");
+    stamp("k-stamp", crypto.at, live);
+    convCrypto();
+  }
+  var coinToZar = true;
+  function convCrypto() {
+    if (!crypto) return;
+    var amt = parseFloat(String($("k-amt").value).replace(/[\s,]/g, ""));
+    var id = $("k-coin").value;
+    var p = crypto.prices[id];
+    var sym = (COINS.filter(function (c) { return c.id === id; })[0] || {}).sym || "";
+    if (!isFinite(amt) || !p) { $("k-out").textContent = "—"; $("k-rate").textContent = ""; return; }
+    if (coinToZar) {
+      $("k-out").textContent = fmtR(amt * p.zar);
+      $("k-rate").textContent = fmtN(amt) + " " + sym + " at " + fmtR(p.zar) + " each";
+    } else {
+      $("k-out").textContent = fmtN(amt / p.zar, 8) + " " + sym;
+      $("k-rate").textContent = "R" + fmtN(amt, 2) + " buys this much " + sym;
+    }
+  }
+  $("k-swap").addEventListener("click", function () { coinToZar = !coinToZar; convCrypto(); });
+  $("k-amt").addEventListener("input", convCrypto);
+  $("k-coin").addEventListener("input", convCrypto);
+
+  $("wa-fiat").addEventListener("click", function () {
+    var amt = $("c-amt").value, cur = $("c-cur").value;
+    this.href = MK.waLink((toZar ? amt + " " + cur + " ≈ " + $("c-out").textContent
+      : "R" + amt + " ≈ " + $("c-out").textContent) + " right now\n" + $("c-rate").textContent + "\n— checked on Makhie");
+  });
+  $("wa-crypto").addEventListener("click", function () {
+    this.href = MK.waLink($("k-rate").textContent + " → " + $("k-out").textContent + "\n— checked on Makhie");
+  });
+
+  loadFiat(false);
+  loadCrypto(false);
+})();
+</script>
+</body>
+</html>

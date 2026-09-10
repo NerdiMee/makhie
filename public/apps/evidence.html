@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Evidence Pack — Makhie</title>
+<meta name="description" content="Turn scattered information into a Business Evidence Pack: sales, expenses, customers, stock and your Makhie records — evidence of how your business operates.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .pull { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 12px 16px; font-size: 13px; color: var(--accent-ink); line-height: 1.6; margin-top: 14px; display: none; }
+  .honest { border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 10px;
+    padding: 12px 16px; font-size: 12.5px; color: var(--warn); line-height: 1.6; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="checklist.html">Paperwork Checklist</a>
+      <a class="link on" href="evidence.html">Business Evidence Pack</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Business Evidence Pack</h1>
+    <p class="sub">"I make R30k a month but the bank doesn't understand my business." Turn what
+    you know into a <b>Business Evidence Pack</b> — not pretend financial statements, just clear
+    evidence of how your business actually operates.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The business</h3>
+      <label class="f" for="e-biz">Business name</label>
+      <input class="f" id="e-biz" placeholder="e.g. Nomsa's Catering">
+      <label class="f" for="e-what">What the business does</label>
+      <input class="f" id="e-what" placeholder="e.g. Catering for events, funerals and corporates">
+      <label class="f" for="e-since">Trading since</label>
+      <input class="f" id="e-since" placeholder="e.g. 2022">
+      <label class="f" for="e-reg">Registration no. (if registered)</label>
+      <input class="f" id="e-reg" placeholder="e.g. 2026/123456/07">
+
+      <h3 style="margin-top:22px">A typical month</h3>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="e-sales">Sales (money in)</label>
+          <input class="f" id="e-sales" placeholder="R30 000">
+        </div>
+        <div>
+          <label class="f" for="e-exp">Expenses (money out)</label>
+          <input class="f" id="e-exp" placeholder="R18 000">
+        </div>
+      </div>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="e-cust">Paying customers per month</label>
+          <input class="f" id="e-cust" type="number" min="0" placeholder="25">
+        </div>
+        <div>
+          <label class="f" for="e-stock">Stock / equipment value</label>
+          <input class="f" id="e-stock" placeholder="R45 000">
+        </div>
+      </div>
+      <label class="f" for="e-suppliers">Main suppliers</label>
+      <input class="f" id="e-suppliers" placeholder="e.g. XYZ Wholesalers, ABC Meats">
+      <label class="f" for="e-payments">How customers pay you</label>
+      <input class="f" id="e-payments" placeholder="e.g. Cash, EFT, card machine">
+
+      <div class="pull" id="pull"></div>
+
+      <div class="row">
+        <button class="btn" id="make" type="button">Build my Evidence Pack (PDF)</button>
+        <button class="btn quiet mk-ai" id="ai-narrate" type="button" style="display:none">✨ Write my summary with AI</button>
+        <button class="btn wa" id="wa-pdf" type="button" style="display:none">Send PDF on WhatsApp</button>
+      </div>
+      <div class="pull" id="ai-out" style="display:none"></div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>What goes in</h3>
+        <p>Sales summary, expense summary, profit estimate, customer numbers, supplier list, stock
+        value, how payments arrive, and your business profile — one clean document a bank officer,
+        landlord or funder can actually read.</p>
+        <p style="margin-top:10px">Signed in? Makhie also counts the receipts, invoices, deliveries
+        and stock records you've created here and adds them as supporting activity.</p>
+      </div>
+      <div class="honest">This pack is honest by design: it states it is <b>self-reported
+      evidence of operations</b>, not audited financial statements. That honesty is exactly what
+      makes it credible.</div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — your numbers stay yours; the pack is built on your device.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var records = null;
+
+  // Pull supporting activity from the user's Makhie records.
+  MK.onAuth(function () {
+    MK.listDocs().then(function (docs) {
+      if (!docs || !docs.length) return;
+      var counts = {};
+      var revC = 0;
+      docs.forEach(function (d) {
+        counts[d.kind] = (counts[d.kind] || 0) + 1;
+        if (d.kind === "receipt" || d.kind === "invoice") revC += (d.amount_cents || 0);
+      });
+      records = { counts: counts, revC: revC, total: docs.length };
+      var bits = [];
+      if (counts.receipt) bits.push(counts.receipt + " receipt" + (counts.receipt > 1 ? "s" : ""));
+      if (counts.invoice) bits.push(counts.invoice + " invoice" + (counts.invoice > 1 ? "s" : ""));
+      if (counts.delivery) bits.push(counts.delivery + " signed deliveries");
+      if (counts.stock) bits.push(counts.stock + " stock counts");
+      if (counts.agreement) bits.push(counts.agreement + " agreements");
+      if (bits.length) {
+        $("pull").innerHTML = "<b>From your Makhie records:</b> " + bits.join(", ") +
+          (revC ? " — " + MK.moneyC(revC) + " documented on receipts/invoices." : ".") +
+          " These will be cited in the pack.";
+        $("pull").style.display = "block";
+      }
+    }).catch(function () {});
+  });
+
+  // AI narrative: turns the raw numbers into the paragraph a bank officer
+  // actually reads. Included in the pack once written; always editable-by-rebuild.
+  var aiNarrative = "";
+  $("ai-narrate").addEventListener("click", function () {
+    var btn = this;
+    if (!$("e-biz").value.trim()) { $("status").textContent = "Fill in the business name first."; $("status").className = "note hint-err"; return; }
+    btn.disabled = true; btn.textContent = "Writing…";
+    var facts = [
+      "Business: " + $("e-biz").value, "Does: " + $("e-what").value,
+      "Trading since: " + $("e-since").value, "Registration: " + ($("e-reg").value || "not yet registered"),
+      "Typical month sales: " + $("e-sales").value, "Typical month expenses: " + $("e-exp").value,
+      "Customers/month: " + $("e-cust").value, "Stock/equipment value: " + $("e-stock").value,
+      "Suppliers: " + $("e-suppliers").value, "Payment methods: " + $("e-payments").value,
+      records ? "Documented on Makhie: " + JSON.stringify(records.counts) + ", receipts/invoices total cents: " + records.revC : ""
+    ].filter(Boolean).join("\n");
+    MK.ai(
+      "Write a factual one-paragraph description (90-130 words) of how this South African small business operates, for a bank officer reading a funding application. Plain, confident, no hype, no claims beyond the facts given. Do not call it audited. Return only the paragraph.",
+      facts
+    ).then(function (t) {
+      aiNarrative = t.trim();
+      $("ai-out").innerHTML = "<b>Owner's summary (AI-drafted — goes into the pack):</b><br>" + MK.esc(aiNarrative);
+      $("ai-out").style.display = "block";
+      $("status").textContent = "Summary written — build the pack to include it.";
+      $("status").className = "note hint-ok";
+    }).catch(function () {
+      $("status").textContent = "AI couldn't answer just now — the pack works fine without it.";
+      $("status").className = "note";
+    }).then(function () { btn.disabled = false; btn.textContent = "✨ Write my summary with AI"; });
+  });
+
+  $("make").addEventListener("click", function () {
+    if (!$("e-biz").value.trim()) { $("status").textContent = "The business name is needed."; $("status").className = "note hint-err"; return; }
+    var salesC = MK.parseAmount($("e-sales").value), expC = MK.parseAmount($("e-exp").value);
+    var profitC = salesC - expC;
+    var today = new Date().toISOString().slice(0, 10);
+    var p = MK.pdfStart("Business evidence pack", [today, $("e-biz").value]);
+    p.h("Business profile");
+    p.kv("Business", $("e-biz").value);
+    p.kv("What it does", $("e-what").value || "—");
+    p.kv("Trading since", $("e-since").value || "—");
+    p.kv("Registration", $("e-reg").value || "Not yet registered");
+    p.h("A typical month (self-reported)");
+    p.kv("Sales in", salesC ? MK.moneyC(salesC) : "—");
+    p.kv("Expenses out", expC ? MK.moneyC(expC) : "—");
+    p.kv("Profit estimate", (salesC || expC) ? MK.moneyC(profitC) : "—");
+    p.kv("Paying customers", $("e-cust").value || "—");
+    p.kv("Stock / equipment", $("e-stock").value ? MK.moneyC(MK.parseAmount($("e-stock").value)) : "—");
+    p.kv("Main suppliers", $("e-suppliers").value || "—");
+    p.kv("Payments arrive by", $("e-payments").value || "—");
+    if (records) {
+      p.h("Documented activity on Makhie");
+      var c = records.counts;
+      p.p("This business keeps records with Makhie: " +
+        [
+          c.receipt ? c.receipt + " receipts" : "", c.invoice ? c.invoice + " invoices" : "",
+          c.delivery ? c.delivery + " signed proof-of-delivery notes" : "",
+          c.stock ? c.stock + " supplier stock counts" : "",
+          c.agreement ? c.agreement + " written customer agreements" : ""
+        ].filter(Boolean).join(", ") + "." +
+        (records.revC ? " Receipts and invoices issued to date total " + MK.moneyC(records.revC) + "." : ""));
+    }
+    if (aiNarrative) {
+      p.h("How this business operates — owner's summary");
+      p.p(aiNarrative);
+    }
+    p.h("About this document");
+    p.p("This pack is self-reported evidence of how the business operates, prepared by the owner. It is not an audited financial statement and does not claim to be one. Figures describe a typical month as stated by the owner" + (records ? ", supported by the documented activity above" : "") + ".", true);
+    p.finish("evidence-pack-" + today + ".pdf");
+    $("wa-pdf").style.display = "inline-flex";
+    $("wa-pdf").onclick = function () { MK.shareLastPdf("Business Evidence Pack - " + $("e-biz").value + ". PDF attached."); };
+    $("status").textContent = "Evidence Pack downloaded ✓";
+    $("status").className = "note hint-ok";
+    MK.saveDoc("evidence_pack", "Evidence pack — " + $("e-biz").value, salesC, {
+      sales_cents: salesC, expenses_cents: expC, customers: $("e-cust").value,
+      stock: $("e-stock").value, suppliers: $("e-suppliers").value
+    }).catch(function () {});
+  });
+})();
+</script>
+</body>
+</html>

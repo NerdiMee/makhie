@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Compressor — Makhie</title>
+<meta name="description" content="Shrink photos and PDFs until they fit in an email or a WhatsApp message — quality you control, nothing uploaded.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .size-line { display: flex; align-items: baseline; gap: 12px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+  .size-line b { font-size: 22px; }
+  .size-line .arrow { color: var(--mute); }
+  .size-line .after { color: var(--ok); font-size: 22px; font-weight: 800; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="convert.html">Converter</a>
+      <a class="link" href="study-audio.html">PDF to Audio</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Document Compressor</h1>
+    <p class="sub">That 8MB photo doesn't need to be 8MB. Shrink pictures and PDFs until they fit
+    in an email or a WhatsApp message — you choose the balance between size and sharpness.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The file</h3>
+      <div class="drop" id="drop">Drop a photo or a PDF here, or click to choose</div>
+      <input type="file" id="file" accept="application/pdf,image/*" hidden>
+      <label class="f" for="q" style="margin-top:18px">Quality <span class="note" id="q-label">(70% — good for sending)</span></label>
+      <input type="range" id="q" min="30" max="92" step="1" value="70">
+      <div class="size-line" id="sizes" style="display:none">
+        <b id="s-before">—</b><span class="arrow">→</span><span class="after" id="s-after">—</span>
+        <span class="note" id="s-save"></span>
+      </div>
+      <div class="row">
+        <button class="btn" id="go" type="button" disabled>Compress &amp; download</button>
+      </div>
+      <div class="bar" id="bar" style="display:none; margin-top:14px"><i></i></div>
+      <p class="note" id="status" style="margin-top:10px"></p>
+      <p class="disc">Photos are re-encoded as JPEG at your chosen quality (very large ones are
+      also sized down to 2000px). PDFs are rebuilt page by page as compact images — perfect for
+      sending, not for re-editing text.</p>
+    </div>
+    <div class="card">
+      <h3>When size matters</h3>
+      <p>Email attachments bounce above ~20MB and feel heavy above 5. Documents sent over chat
+      cost the receiver data — a 400KB statement is opened; an 8MB one waits for WiFi.</p>
+      <p style="margin-top:10px">Rule of thumb: 70% quality is invisible to most eyes and cuts
+      photos by 60–90%. Drop lower only when the file must be tiny.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — compression runs on your device; your files never travel anywhere.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script src="../assets/vendor/pdf.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var pdfjs = window["pdfjs-dist/build/pdf"] || window.pdfjsLib;
+  pdfjs.GlobalWorkerOptions.workerSrc = "../assets/vendor/pdf.worker.min.js";
+  if (location.protocol === "file:") pdfjs.GlobalWorkerOptions.disableWorker = true;
+
+  var theFile = null, isPdf = false;
+  function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(2) + " MB" : Math.round(n / 1024) + " KB"; }
+
+  var drop = $("drop"), file = $("file");
+  drop.addEventListener("click", function () { file.click(); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("over"); });
+  drop.addEventListener("drop", function (e) { e.preventDefault(); drop.classList.remove("over"); take(e.dataTransfer.files[0]); });
+  file.addEventListener("change", function () { take(file.files[0]); });
+  $("q").addEventListener("input", function () {
+    var v = +this.value;
+    $("q-label").textContent = "(" + v + "% — " + (v >= 80 ? "near-original" : v >= 60 ? "good for sending" : v >= 45 ? "small and readable" : "tiny, soft edges") + ")";
+  });
+
+  function take(f) {
+    if (!f) return;
+    isPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+    if (!isPdf && !/^image\//.test(f.type)) { $("status").textContent = "Drop a photo or a PDF."; $("status").className = "note hint-err"; return; }
+    theFile = f;
+    drop.textContent = "✓ " + f.name + " (" + fmtSize(f.size) + ") — drop another to replace";
+    $("sizes").style.display = "flex";
+    $("s-before").textContent = fmtSize(f.size);
+    $("s-after").textContent = "?";
+    $("s-save").textContent = "";
+    $("go").disabled = false;
+    $("status").textContent = "";
+  }
+
+  function finish(blob, name) {
+    $("s-after").textContent = fmtSize(blob.size);
+    var pct = theFile.size ? Math.round(100 * (1 - blob.size / theFile.size)) : 0;
+    $("s-save").textContent = pct > 0 ? pct + "% smaller" : "already compact";
+    MK.download(blob, name);
+    $("status").textContent = "Saved ✓ — " + name;
+    $("status").className = "note hint-ok";
+    $("bar").style.display = "none"; $("bar").classList.remove("indet");
+    $("go").disabled = false;
+  }
+
+  $("go").addEventListener("click", function () {
+    if (!theFile) return;
+    $("go").disabled = true;
+    $("bar").style.display = "block"; $("bar").classList.add("indet");
+    $("status").innerHTML = "<span class='mk-spin'></span>Compressing on your device…";
+    $("status").className = "note";
+    var q = (+$("q").value) / 100;
+    var base = theFile.name.replace(/\.[^.]+$/, "");
+    if (!isPdf) {
+      var r = new FileReader();
+      r.onload = function () {
+        var img = new Image();
+        img.onerror = function () { $("status").textContent = "Couldn't read that image."; $("status").className = "note hint-err"; $("go").disabled = false; };
+        img.onload = function () {
+          var sc = Math.min(1, 2000 / Math.max(img.width, img.height));
+          var cv = document.createElement("canvas");
+          cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+          var cx = cv.getContext("2d");
+          cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+          cx.drawImage(img, 0, 0, cv.width, cv.height);
+          cv.toBlob(function (blob) { finish(blob, base + "-small.jpg"); }, "image/jpeg", q);
+        };
+        img.src = r.result;
+      };
+      r.readAsDataURL(theFile);
+      return;
+    }
+    // PDF: re-render each page as a compact JPEG into a fresh document.
+    var r2 = new FileReader();
+    r2.onload = function () {
+      pdfjs.getDocument({ data: r2.result }).promise.then(function (doc) {
+        var out = null, i = 1;
+        (function next() {
+          if (i > doc.numPages) { finish(out.output("blob"), base + "-small.pdf"); return; }
+          doc.getPage(i).then(function (pg) {
+            var vp1 = pg.getViewport({ scale: 1 });
+            var scale = Math.min(1.5, 1400 / Math.max(vp1.width, vp1.height));
+            var vp = pg.getViewport({ scale: scale });
+            var cv = document.createElement("canvas");
+            cv.width = vp.width; cv.height = vp.height;
+            var cx = cv.getContext("2d");
+            cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+            pg.render({ canvasContext: cx, viewport: vp }).promise.then(function () {
+              var wmm = vp1.width * 0.3528, hmm = vp1.height * 0.3528;
+              if (!out) out = new jspdf.jsPDF({ unit: "mm", format: [wmm, hmm], orientation: wmm > hmm ? "l" : "p" });
+              else out.addPage([wmm, hmm], wmm > hmm ? "l" : "p");
+              out.addImage(cv.toDataURL("image/jpeg", q), "JPEG", 0, 0, wmm, hmm);
+              i++; setTimeout(next, 30);
+            });
+          });
+        })();
+      }).catch(function () {
+        $("status").textContent = "Couldn't read that PDF — it may be encrypted.";
+        $("status").className = "note hint-err";
+        $("bar").style.display = "none"; $("go").disabled = false;
+      });
+    };
+    r2.readAsArrayBuffer(theFile);
+  });
+})();
+</script>
+</body>
+</html>

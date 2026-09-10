@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Property Return — Makhie</title>
+<meta name="description" content="What a property investment actually returns: yearly cashflow, cash-on-cash return, and where you stand after five years.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Money tools</a>
+      <a class="link" href="propertycalc.html">Rental Yield Calculator</a>
+      <a class="link" href="bondcalc.html">Home Loan Calculator</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Money tools · free</div>
+    <h1 class="page">Property Return</h1>
+    <p class="sub">Yield tells you if the rent is good; ROI tells you what <i>your money</i>
+    earns once the bond is doing the heavy lifting.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card">
+      <h3>The investment</h3>
+      <label class="f" for="price">Purchase price</label>
+      <input class="f" id="price" placeholder="R850 000" value="R850 000">
+      <label class="f" for="dep">Your cash in (deposit + transfer costs)</label>
+      <input class="f" id="dep" placeholder="R150 000" value="R150 000">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="rate">Bond rate (%)</label>
+          <input class="f" id="rate" type="number" min="0" step="0.1" value="11">
+        </div>
+        <div>
+          <label class="f" for="grow">Value growth (%/yr)</label>
+          <input class="f" id="grow" type="number" min="0" step="0.5" value="5">
+        </div>
+      </div>
+      <label class="f" for="rent">Monthly rent</label>
+      <input class="f" id="rent" placeholder="R8 000" value="R8 000">
+      <label class="f" for="costs">Monthly expenses (levies, rates, insurance, upkeep)</label>
+      <input class="f" id="costs" placeholder="R2 200" value="R2 200">
+      <p class="disc">Assumes a 20-year bond on the price minus your deposit portion. Growth and
+      vacancy vary; this is a planning estimate, not financial advice.</p>
+    </div>
+    <div class="card">
+      <h3>The return</h3>
+      <div class="res-cap">Cash-on-cash return (year 1)</div>
+      <div class="res-big" id="r-coc">—</div>
+      <div style="margin-top:14px">
+        <div class="res-row"><span>Bond repayment / month</span><b id="r-bond">—</b></div>
+        <div class="res-row"><span>Cashflow / month (rent − costs − bond)</span><b id="r-cash">—</b></div>
+        <div class="res-row"><span>Cashflow / year</span><b id="r-cashyr">—</b></div>
+        <div class="res-row"><span>Estimated value in 5 years</span><b id="r-val5">—</b></div>
+        <div class="res-row"><span>Equity in 5 years (value − bond left)</span><b id="r-eq5">—</b></div>
+        <div class="res-row win"><span>5-year total gain on your cash</span><b id="r-gain5">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:18px">Checking the bond and yield side too? Run the numbers in
+  <a href="loans.html">Loans &amp; Bonds</a>.</p>
+
+  <footer class="site">Makhie — calculations run on your device. Estimates, not financial advice.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/makhie.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function calc() {
+    var price = MK.parseAmount($("price").value) / 100;
+    var cash = MK.parseAmount($("dep").value) / 100;
+    var yr = (parseFloat($("rate").value) || 0) / 100;
+    var grow = (parseFloat($("grow").value) || 0) / 100;
+    var rent = MK.parseAmount($("rent").value) / 100;
+    var costs = MK.parseAmount($("costs").value) / 100;
+    var ids = ["r-coc","r-bond","r-cash","r-cashyr","r-val5","r-eq5","r-gain5"];
+    if (!price || !rent) { ids.forEach(function (id) { $(id).textContent = "—"; }); return; }
+    var L = Math.max(0, price - Math.min(cash, price)), n = 240, rm = yr / 12;
+    var pay = L ? (rm > 0 ? L * rm / (1 - Math.pow(1 + rm, -n)) : L / n) : 0;
+    var cashMo = rent - costs - pay;
+    var cashYr = cashMo * 12;
+    // 5-year: amortise 60 months, grow value.
+    var bal = L;
+    for (var m = 0; m < 60 && bal > 0; m++) {
+      var interest = bal * rm;
+      bal -= (Math.min(pay, bal + interest) - interest);
+    }
+    var val5 = price * Math.pow(1 + grow, 5);
+    var eq5 = val5 - Math.max(0, bal);
+    var gain5 = eq5 - cash + cashYr * 5; // equity built beyond your cash, plus cashflow
+    $("r-coc").textContent = cash ? (100 * cashYr / cash).toFixed(1) + "%" : "∞";
+    $("r-bond").textContent = MK.moneyC(Math.round(pay * 100));
+    $("r-cash").textContent = (cashMo < 0 ? "−" : "") + MK.moneyC(Math.round(Math.abs(cashMo) * 100));
+    $("r-cashyr").textContent = (cashYr < 0 ? "−" : "") + MK.moneyC(Math.round(Math.abs(cashYr) * 100));
+    $("r-val5").textContent = MK.moneyC(Math.round(val5 * 100));
+    $("r-eq5").textContent = MK.moneyC(Math.round(eq5 * 100));
+    $("r-gain5").textContent = (gain5 < 0 ? "−" : "+") + MK.moneyC(Math.round(Math.abs(gain5) * 100));
+  }
+  ["price","dep","rate","grow","rent","costs"].forEach(function (id) { $(id).addEventListener("input", calc); });
+  calc();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Signing — Makhie</title>
+<meta name="description" content="Send a short link or QR code; your client opens the PDF, signs once, and the signature is destroyed. Single use is enforced.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 14px; }
+  .seg button { padding: 9px 22px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .panel { display: none; } .panel.on { display: block; }
+  .req-card { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px;
+    padding: 14px 16px; margin-top: 16px; font-size: 13.5px; line-height: 1.6; display: none; }
+  .req-card b { color: var(--accent-ink); }
+  .linkout { margin-top: 16px; display: none; }
+  .linkout .grid2 { gap: 14px; align-items: center; }
+  .linkout img { width: 164px; height: 164px; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: #fff; }
+  .linkout input { font-size: 12.5px; color: var(--accent-ink); }
+  #page-wrap { position: relative; margin-top: 14px; display: none; max-width: 560px; }
+  #page-cv { width: 100%; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); display: block; cursor: crosshair; }
+  #target { position: absolute; border: 2px dashed var(--accent); background: rgba(30,95,214,.08);
+    border-radius: 4px; pointer-events: none; display: none; }
+  #target::after { content: "sign here"; position: absolute; top: -20px; left: 0; font-size: 11px; font-weight: 700; color: var(--accent-ink); }
+  .pad-box { margin-top: 16px; }
+  #pad { width: 100%; max-width: 440px; height: 150px; border: 1.5px dashed var(--line); border-radius: 10px;
+    background: #fff; display: block; touch-action: none; cursor: crosshair; }
+  .pad-tools { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .used-note { border: 1px solid var(--line); border-left: 3px solid #b3402a; border-radius: 10px;
+    padding: 16px 18px; margin-top: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.65; display: none; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link on" href="sign.html">PDF Signing</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">PDF Signing</h1>
+    <p class="sub">Send a short link or QR code. Your client opens it, finds the PDF waiting, signs,
+    and presses <b>Use once</b> — the signature is stamped and destroyed, and the link dies with it.
+    One link, one signature, enforced.</p>
+    <div class="seg" role="tablist">
+      <button id="tab-sign" class="on" type="button">Sign a PDF</button>
+      <button id="tab-request" type="button">Request a signature</button>
+    </div>
+  </div>
+
+  <!-- ============ REQUEST ============ -->
+  <div class="panel" id="panel-request">
+    <div class="card" style="margin-top:24px; max-width:640px">
+      <h3>Create a signing link</h3>
+      <p class="note">Attach the PDF here — it travels with the link, so your client needs nothing
+      else. Share the short link or let them scan the QR code.</p>
+      <div class="drop" id="r-drop" style="margin-top:12px">Drop the PDF to be signed, or click to choose it</div>
+      <input type="file" id="r-file" accept="application/pdf" hidden>
+      <label class="f" for="r-from">Your name / business</label>
+      <input class="f" id="r-from" placeholder="e.g. Nomsa's Catering">
+      <label class="f" for="r-signer">Signer's name</label>
+      <input class="f" id="r-signer" placeholder="Who must sign?">
+      <label class="f" for="r-doc">Document name</label>
+      <input class="f" id="r-doc" placeholder="e.g. Service agreement — March">
+      <label class="f" for="r-msg">Message (optional)</label>
+      <input class="f" id="r-msg" placeholder="e.g. Please sign at the bottom of page 2">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="r-page">Sign on page</label>
+          <input class="f" id="r-page" type="number" min="1" value="1">
+        </div>
+        <div>
+          <label class="f" for="r-pos">Position</label>
+          <select class="f" id="r-pos">
+            <option value="bl">Bottom left</option>
+            <option value="bc">Bottom centre</option>
+            <option value="br" selected>Bottom right</option>
+            <option value="click">Let the signer choose</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="r-make" type="button">Create signing link</button>
+        <span class="note" id="r-status"></span>
+      </div>
+      <div class="linkout" id="r-out">
+        <div class="grid2">
+          <div>
+            <label class="f">Short link</label>
+            <input class="f" id="r-link" readonly>
+            <div class="row">
+              <button class="btn quiet small" id="r-copy" type="button">Copy link</button>
+              <a class="btn wa small" id="r-wa" target="_blank" rel="noopener">Send on WhatsApp</a>
+            </div>
+            <p class="note" id="r-verify" style="margin-top:10px"></p>
+          </div>
+          <div style="text-align:center">
+            <img id="r-qr" alt="QR code for the signing link">
+            <div class="note">Scan to open the signing desk</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SIGN ============ -->
+  <div class="panel on" id="panel-sign">
+    <div class="req-card" id="req-card"></div>
+    <div class="used-note" id="used-note">
+      <b>This signing link has already been used.</b><br>
+      PDF Signing signatures work exactly once. If you need to sign again, ask the sender for a fresh link.
+    </div>
+
+    <div class="grid2" style="margin-top:24px">
+      <div class="card" id="sign-card">
+        <h3>1 · The document</h3>
+        <div class="drop" id="drop">Drop the PDF here, or click to choose it</div>
+        <input type="file" id="file" accept="application/pdf" hidden>
+        <div class="row" id="page-row" style="display:none">
+          <label class="f" for="pageno" style="margin:0">Page</label>
+          <input class="f" id="pageno" type="number" min="1" value="1" style="flex:0 1 90px">
+          <span class="note" id="page-note"></span>
+        </div>
+        <div id="page-wrap">
+          <canvas id="page-cv"></canvas>
+          <div id="target"></div>
+        </div>
+        <p class="note" id="place-hint" style="display:none; margin-top:8px">Click on the page to move the signing spot.</p>
+      </div>
+
+      <div class="card">
+        <h3>2 · The signature</h3>
+        <p class="note">Draw with your mouse or finger. It lives only in this box, only until it's used.</p>
+        <div class="pad-box">
+          <canvas id="pad" width="880" height="300"></canvas>
+          <div class="pad-tools">
+            <button class="btn quiet small" id="pad-clear" type="button">Clear</button>
+            <span class="note" id="pad-note">Unsigned</span>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="use-once" type="button" disabled>Use once &amp; stamp</button>
+        </div>
+        <p class="note" id="sign-status" style="margin-top:10px"></p>
+        <div class="row"><button class="btn wa" id="wa-signed" type="button" style="display:none">Send signed PDF on WhatsApp</button></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — signatures are used once, wiped immediately, and never stored. Single use is enforced on the link itself.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/pdf.min.js"></script>
+<script src="../assets/vendor/pdf-lib.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var pdfjs = window["pdfjs-dist/build/pdf"] || window.pdfjsLib;
+  pdfjs.GlobalWorkerOptions.workerSrc = "../assets/vendor/pdf.worker.min.js";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = MK.sb;
+  var BUCKET = "makhie-sign";
+
+  /* ---------- tabs ---------- */
+  function tab(which) {
+    $("tab-sign").classList.toggle("on", which === "sign");
+    $("tab-request").classList.toggle("on", which === "request");
+    $("panel-sign").classList.toggle("on", which === "sign");
+    $("panel-request").classList.toggle("on", which === "request");
+  }
+  $("tab-sign").addEventListener("click", function () { tab("sign"); });
+  $("tab-request").addEventListener("click", function () { tab("request"); });
+
+  /* ---------- request: upload + short link + QR ---------- */
+  var reqPdf = null;
+  var rdrop = $("r-drop"), rfile = $("r-file");
+  rdrop.addEventListener("click", function () { rfile.click(); });
+  rdrop.addEventListener("dragover", function (e) { e.preventDefault(); rdrop.classList.add("over"); });
+  rdrop.addEventListener("dragleave", function () { rdrop.classList.remove("over"); });
+  rdrop.addEventListener("drop", function (e) {
+    e.preventDefault(); rdrop.classList.remove("over");
+    if (e.dataTransfer.files.length) takeReqPdf(e.dataTransfer.files[0]);
+  });
+  rfile.addEventListener("change", function () { if (rfile.files.length) takeReqPdf(rfile.files[0]); });
+  function takeReqPdf(f) {
+    if (!/\.pdf$/i.test(f.name) && !/pdf$/i.test(f.type)) { rdrop.textContent = "That doesn't look like a PDF — try again."; return; }
+    reqPdf = f;
+    rdrop.textContent = "✓ " + f.name + " — drop another to replace";
+    if (!$("r-doc").value) $("r-doc").value = f.name.replace(/\.pdf$/i, "");
+  }
+
+  function baseUrl() { return location.href.split("#")[0].split("?")[0]; }
+  function verifyUrl(id) { return baseUrl().replace(/[^\/]*$/, "") + "verify.html?id=" + id; }
+
+  $("r-make").addEventListener("click", function () {
+    var st = $("r-status");
+    if (!reqPdf) { st.textContent = "Attach the PDF first."; st.className = "note hint-err"; return; }
+    if (!sb) { st.textContent = "No connection — try again once you're online."; st.className = "note hint-err"; return; }
+    var id = MK.uid(9);
+    st.className = "note"; st.textContent = "Uploading the document…";
+    $("r-make").disabled = true;
+    sb.storage.from(BUCKET).upload(id + ".pdf", reqPdf, { contentType: "application/pdf" }).then(function (r) {
+      if (r.error) throw r.error;
+      return sb.from("makhie_sign_requests").insert({
+        id: id,
+        from_name: $("r-from").value.trim(),
+        signer_name: $("r-signer").value.trim(),
+        doc_name: $("r-doc").value.trim() || reqPdf.name.replace(/\.pdf$/i, ""),
+        message: $("r-msg").value.trim(),
+        page: Math.max(1, parseInt($("r-page").value, 10) || 1),
+        pos: $("r-pos").value,
+        pdf_path: id + ".pdf"
+      });
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      var link = baseUrl() + "?s=" + id;
+      $("r-link").value = link;
+      $("r-qr").src = MK.qrDataUrl(link, 5);
+      $("r-wa").href = MK.waLink(($("r-from").value.trim() || "Someone") + " asks you to sign \"" +
+        ($("r-doc").value.trim() || "a document") + "\" — open your one-time signing desk: " + link);
+      $("r-out").style.display = "block";
+      $("r-verify").innerHTML = "Anyone can check this signature at: <a href='" +
+        MK.esc(verifyUrl(id)) + "'>" + MK.esc(verifyUrl(id)) + "</a>";
+      st.className = "note hint-ok"; st.textContent = "Link ready — it works exactly once.";
+      $("r-make").disabled = false;
+    }).catch(function (e) {
+      st.className = "note hint-err";
+      st.textContent = "Couldn't create the link: " + ((e && e.message) || "unknown error");
+      $("r-make").disabled = false;
+    });
+  });
+  $("r-copy").addEventListener("click", function () {
+    navigator.clipboard.writeText($("r-link").value).then(function () {
+      $("r-copy").textContent = "Copied ✓";
+      setTimeout(function () { $("r-copy").textContent = "Copy link"; }, 1600);
+    }).catch(function () { $("r-copy").textContent = "Copy blocked — select the link text"; });
+  });
+
+  /* ---------- sign: resolve an incoming link ---------- */
+  // PROCHECK: universal test bypass — ignores the spent-link gate locally.
+  var bypass = /procheck/i.test(location.search);
+  var req = null, reqId = null;
+  var sMatch = location.search.match(/[?&]s=([a-z0-9]+)/i);
+
+  // Legacy offline links (#req=base64) still resolve.
+  var hMatch = location.hash.match(/req=([A-Za-z0-9_-]+)/);
+  if (hMatch) {
+    try {
+      var s64 = hMatch[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (s64.length % 4) s64 += "=";
+      req = JSON.parse(decodeURIComponent(escape(atob(s64))));
+    } catch (e) { req = null; }
+  }
+
+  function showReqCard() {
+    var rc = $("req-card");
+    rc.innerHTML = "<b>" + MK.esc(req.from_name || req.from || "Someone") + "</b> asks <b>" +
+      MK.esc(req.signer_name || req.signer || "you") + "</b> to sign" +
+      ((req.doc_name || req.doc) ? ": <b>" + MK.esc(req.doc_name || req.doc) + "</b>" : " a document") + "." +
+      ((req.message || req.msg) ? "<br>“" + MK.esc(req.message || req.msg) + "”" : "") +
+      "<br><span class='note'>Sign below and press Use once — the signed PDF downloads to your device.</span>";
+    rc.style.display = "block";
+    if (req.page) $("pageno").value = req.page;
+  }
+
+  if (sMatch && sb) {
+    reqId = sMatch[1];
+    sb.rpc("makhie_get_sign_request", { req_id: reqId }).then(function (r) {
+      if (r.error || !r.data || !r.data.length) { $("drop").textContent = "This signing link doesn't exist any more."; return; }
+      req = r.data[0];
+      showReqCard();
+      if (req.used_at && !bypass) { spentGate(); return; }
+      $("drop").textContent = "Fetching " + (req.doc_name || "the document") + "…";
+      var url = sb.storage.from(BUCKET).getPublicUrl(req.pdf_path).data.publicUrl;
+      fetch(url).then(function (resp) { return resp.arrayBuffer(); }).then(function (ab) {
+        loadPdfBytes(new Uint8Array(ab), req.doc_name || "document");
+      }).catch(function () { $("drop").textContent = "Couldn't fetch the document — check your connection and reload."; });
+    });
+  } else if (sMatch && !sb) {
+    $("drop").textContent = "This signing link needs a connection — go online and reload the page.";
+  } else if (req) {
+    showReqCard();
+  }
+
+  function spentGate() {
+    $("used-note").style.display = "block";
+    $("sign-card").style.opacity = ".45";
+    pad.lock(); $("pad-clear").disabled = true; $("use-once").disabled = true;
+  }
+
+  /* ---------- sign: load + render PDF ---------- */
+  var pdfBytes = null, pdfDoc = null, pageCount = 0, scale = 1, pagePts = { w: 595, h: 842 };
+  var target = { x: null, y: null };
+  var BOX_PT = { w: 150, h: 50 };
+  var docNameOut = "document";
+
+  var drop = $("drop"), file = $("file");
+  drop.addEventListener("click", function () { file.click(); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("over"); });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault(); drop.classList.remove("over");
+    if (e.dataTransfer.files.length) load(e.dataTransfer.files[0]);
+  });
+  file.addEventListener("change", function () { if (file.files.length) load(file.files[0]); });
+
+  function load(f) {
+    var r = new FileReader();
+    r.onload = function () { loadPdfBytes(new Uint8Array(r.result), f.name.replace(/\.pdf$/i, "")); };
+    r.readAsArrayBuffer(f);
+  }
+  function loadPdfBytes(bytes, name) {
+    pdfBytes = bytes; docNameOut = name || "document";
+    pdfjs.getDocument({ data: pdfBytes.slice(0) }).promise.then(function (doc) {
+      pdfDoc = doc; pageCount = doc.numPages;
+      drop.textContent = "✓ " + docNameOut + ".pdf — drop another to replace";
+      $("page-row").style.display = "flex";
+      $("page-note").textContent = "of " + pageCount;
+      var want = Math.min(pageCount, Math.max(1, parseInt($("pageno").value, 10) || 1));
+      $("pageno").value = want; $("pageno").max = pageCount;
+      renderPage(want);
+    }).catch(function () {
+      drop.textContent = "Couldn't read that PDF — it may be corrupted or password-protected. Try again.";
+    });
+  }
+  $("pageno").addEventListener("change", function () {
+    if (!pdfDoc) return;
+    var p = Math.min(pageCount, Math.max(1, parseInt($("pageno").value, 10) || 1));
+    $("pageno").value = p; renderPage(p);
+  });
+
+  function renderPage(n) {
+    var docNow = pdfDoc;
+    pdfDoc.getPage(n).then(function (pg) {
+      if (docNow !== pdfDoc) return;
+      var wrap = $("page-wrap"); wrap.style.display = "block";
+      var vp1 = pg.getViewport({ scale: 1 });
+      pagePts = { w: vp1.width, h: vp1.height };
+      var cssW = Math.min(560, wrap.parentNode.clientWidth - 4);
+      scale = cssW / vp1.width;
+      var vp = pg.getViewport({ scale: scale * (devicePixelRatio || 1) });
+      var cv = $("page-cv");
+      cv.width = vp.width; cv.height = vp.height;
+      cv.style.height = (vp1.height * scale) + "px";
+      pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise.then(function () {
+        if (docNow !== pdfDoc) return;
+        defaultTarget(); drawTarget();
+        $("place-hint").style.display = "block";
+        updateUseState();
+      });
+    }).catch(function () {
+      drop.textContent = "Couldn't display that page — try another page or another copy of the PDF.";
+    });
+  }
+  function defaultTarget() {
+    var cw = $("page-cv").clientWidth || 560, ch = pagePts.h * scale;
+    var bw = BOX_PT.w * scale, bh = BOX_PT.h * scale, pad2 = 24 * scale;
+    var pos = (req && req.pos) || "click";
+    if (pos === "bl") target = { x: pad2, y: ch - bh - pad2 };
+    else if (pos === "bc") target = { x: (cw - bw) / 2, y: ch - bh - pad2 };
+    else if (pos === "br") target = { x: cw - bw - pad2, y: ch - bh - pad2 };
+    else target = { x: (cw - bw) / 2, y: ch * 0.6 };
+  }
+  function drawTarget() {
+    var t = $("target");
+    t.style.display = "block";
+    t.style.left = target.x + "px"; t.style.top = target.y + "px";
+    t.style.width = (BOX_PT.w * scale) + "px"; t.style.height = (BOX_PT.h * scale) + "px";
+  }
+  $("page-cv").addEventListener("click", function (e) {
+    var r = e.target.getBoundingClientRect();
+    var bw = BOX_PT.w * scale, bh = BOX_PT.h * scale;
+    target.x = Math.min(Math.max(0, e.clientX - r.left - bw / 2), r.width - bw);
+    target.y = Math.min(Math.max(0, e.clientY - r.top - bh / 2), r.height - bh);
+    drawTarget();
+  });
+
+  /* ---------- the pad (shared component) ---------- */
+  var pad = MK.sigPad($("pad"));
+  pad.onink = function () { $("pad-note").textContent = "Signed — ready to use once"; updateUseState(); };
+  pad.onclear = function () { $("pad-note").textContent = "Unsigned"; updateUseState(); };
+  $("pad-clear").addEventListener("click", pad.clear);
+  var spent = false;
+  function updateUseState() {
+    $("use-once").disabled = !(pad.hasInk() && pdfBytes && target.x != null) || spent;
+  }
+
+  /* ---------- stamp exactly once ---------- */
+  $("use-once").addEventListener("click", function () {
+    if (spent || !pdfBytes || !pad.hasInk()) return;
+    $("use-once").disabled = true;
+    $("sign-status").textContent = "Stamping…"; $("sign-status").className = "note";
+
+    var sig = pad.trimmedPng();
+    var bytesNow = pdfBytes;
+    var pageIdx = Math.min(pageCount, Math.max(1, parseInt($("pageno").value, 10) || 1)) - 1;
+
+    // Spend the single use FIRST when this came from a link, so two devices
+    // racing on the same link can't both stamp.
+    var gate = (reqId && sb)
+      ? sb.rpc("makhie_mark_signed", { req_id: reqId }).then(function (r) {
+          if (r.error) throw r.error;
+          if (!r.data && !bypass) { spentGate(); throw new Error("used"); }
+        })
+      : Promise.resolve();
+
+    gate.then(function () {
+      return PDFLib.PDFDocument.load(bytesNow);
+    }).then(function (doc) {
+      return doc.embedPng(sig.url).then(function (png) {
+        var page = doc.getPages()[pageIdx];
+        var boxW = BOX_PT.w, boxH = BOX_PT.h;
+        var ratio = sig.w / sig.h, w = boxW, h = w / ratio;
+        if (h > boxH) { h = boxH; w = h * ratio; }
+        var px = target.x / scale + (boxW - w) / 2;
+        var py = pagePts.h - (target.y / scale) - boxH + (boxH - h) / 2;
+        page.drawImage(png, { x: px, y: py, width: w, height: h });
+        return doc.save();
+      });
+    }).then(function (out) {
+      var name = (req && (req.doc_name || req.doc)) || docNameOut;
+      name = name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") || "document";
+      var signedBlob = new Blob([out], { type: "application/pdf" });
+      MK.download(signedBlob, name + "-signed.pdf");
+      $("wa-signed").style.display = "inline-flex";
+      $("wa-signed").onclick = function () { MK.sharePdf(signedBlob, name + "-signed.pdf", "Signed document attached - " + name + "."); };
+      spent = true;
+      pad.clear(); pad.lock(); $("pad-clear").disabled = true;
+      $("pad-note").textContent = "Signature used and destroyed";
+      $("sign-status").innerHTML = "Signed and downloaded ✓ — send the signed PDF back to the requester." +
+        (reqId ? "<br>Anyone can check this signature at: <a href='" +
+          MK.esc(verifyUrl(reqId)) + "'>" + MK.esc(verifyUrl(reqId)) + "</a>" : "");
+      $("sign-status").className = "note hint-ok";
+      updateUseState();
+    }).catch(function (e) {
+      if (e && e.message === "used") {
+        $("sign-status").textContent = "This link was already used on another device.";
+        $("sign-status").className = "note hint-err";
+        return;
+      }
+      $("sign-status").textContent = "Couldn't stamp that PDF — it may be encrypted. Ask for an unlocked copy.";
+      $("sign-status").className = "note hint-err";
+      updateUseState();
+    });
+  });
+})();
+</script>
+</body>
+</html>

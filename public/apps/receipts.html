@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipt &amp; Invoice Maker — Makhie</title>
+<meta name="description" content="Write professional receipts and invoices — your logo, client details, line items and totals — and download a PDF ready to send.">
+<link rel="icon" type="image/png" href="../assets/logo-small.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 14px; }
+  .seg button { padding: 9px 22px; border: 0; background: #fff; color: var(--mute); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .logo-box { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+  .logo-box img { height: 44px; width: auto; max-width: 160px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #fff; display: none; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.items th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); text-align: left; padding: 6px 6px; }
+  table.items td { padding: 4px 4px; vertical-align: top; }
+  table.items input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); font: 400 13px inherit; font-family: inherit; outline: none; }
+  table.items input:focus { border-color: var(--accent); }
+  td.c-price, td.c-qty { width: 108px; } td.c-line { width: 96px; text-align: right; font-size: 13px; font-weight: 600; padding-top: 12px; white-space: nowrap; }
+  td.c-x { width: 30px; } td.c-x button { border: 0; background: none; color: var(--mute); font-size: 15px; cursor: pointer; padding: 8px 4px; }
+  td.c-x button:hover { color: #b3402a; }
+  .totalline { display: flex; justify-content: flex-end; gap: 18px; align-items: baseline; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .totalline b { font-size: 22px; letter-spacing: -.01em; }
+  /* Live preview mirrors the PDF */
+  .paper { background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 30px 32px; font-size: 12.5px; min-height: 420px; }
+  .paper .p-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+  .paper .p-logo { max-height: 52px; max-width: 170px; object-fit: contain; display: none; }
+  .paper .p-doc { text-align: right; }
+  .paper .p-doc b { font-size: 19px; letter-spacing: .06em; }
+  .paper .p-doc div { color: var(--mute); margin-top: 3px; }
+  .paper .p-biz { margin-top: 18px; font-weight: 700; }
+  .paper .p-biz small { display: block; font-weight: 400; color: var(--mute); margin-top: 2px; }
+  .paper .p-client { margin-top: 14px; }
+  .paper .p-client em { font-style: normal; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); display: block; }
+  .paper table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .paper th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--mute);
+    border-bottom: 1.5px solid var(--ink); padding: 6px 4px; }
+  .paper td { padding: 7px 4px; border-bottom: 1px solid var(--line); }
+  .paper .num { text-align: right; white-space: nowrap; }
+  .paper .p-total { display: flex; justify-content: flex-end; gap: 26px; margin-top: 12px; font-weight: 800; font-size: 15px; }
+  .paper .p-notes { margin-top: 18px; color: var(--mute); line-height: 1.6; }
+  .paper .p-paid { display: inline-block; margin-top: 14px; color: var(--ok); border: 2px solid var(--ok);
+    border-radius: 8px; padding: 3px 12px; font-weight: 800; letter-spacing: .12em; transform: rotate(-3deg); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html" aria-label="Makhie home"><img src="../assets/logo-small.png" alt="">MAKHIE</a>
+    <nav class="nav">
+      <a class="link" href="../index.html#tools">Tools</a>
+      <a class="link" href="study-audio.html">PDF to Audio</a>
+      <a class="link on" href="receipts.html">Receipts</a>
+      <a class="link" href="sign.html">PDF Signing</a>
+    </nav>
+  </header>
+
+  <div style="margin-top:38px">
+    <div class="kicker">Makhie tools · free</div>
+    <h1 class="page">Receipt &amp; Invoice Maker</h1>
+    <p class="sub">Look professional from the first sale. Fill in the details, watch the document
+    build itself, download the PDF and send it anywhere. Nothing is uploaded — it's all yours.</p>
+    <div class="seg" role="tablist">
+      <button id="mode-receipt" class="on" type="button">Receipt</button>
+      <button id="mode-invoice" type="button">Invoice</button>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="card">
+      <h3>Details</h3>
+      <label class="f">Your business logo (optional)</label>
+      <div class="logo-box">
+        <button class="btn quiet small" id="logo-pick" type="button">Upload logo</button>
+        <input type="file" id="logo-file" accept="image/*" hidden>
+        <img id="logo-thumb" alt="Logo preview">
+        <button class="btn quiet small" id="logo-clear" type="button" style="display:none">Remove</button>
+      </div>
+      <label class="f" for="biz">Business name</label>
+      <input class="f" id="biz" placeholder="e.g. Nomsa's Catering">
+      <label class="f" for="biz2">Contact line (phone, email — optional)</label>
+      <input class="f" id="biz2" placeholder="e.g. 072 000 0000 · nomsa@example.com">
+      <label class="f" for="client">Client name</label>
+      <input class="f" id="client" placeholder="Who is this for?">
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="docno">Number</label>
+          <input class="f" id="docno">
+        </div>
+        <div>
+          <label class="f" for="docdate">Date</label>
+          <input class="f" id="docdate" type="date">
+        </div>
+      </div>
+      <div class="grid2" style="gap:12px">
+        <div>
+          <label class="f" for="currency">Currency symbol</label>
+          <input class="f" id="currency" value="R">
+        </div>
+        <div></div>
+      </div>
+
+      <label class="f">Items</label>
+      <table class="items">
+        <thead><tr><th>Purchase description</th><th>Unit value</th><th>Amount</th><th></th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <button class="btn quiet small" id="add-row" type="button" style="margin-top:10px">+ Add item</button>
+      <div class="totalline"><span class="note">Total</span><b id="total-side">R0.00</b></div>
+
+      <label class="f" for="notes">Note at the bottom (optional)</label>
+      <input class="f" id="notes" placeholder="e.g. Thank you for your support!">
+
+      <div class="actions">
+        <button class="btn" id="dl-pdf" type="button">Download PDF</button>
+        <button class="btn quiet" id="share" type="button" style="display:none">Share…</button>
+        <button class="btn wa" id="wa-pdf" type="button">Send PDF on WhatsApp</button>
+      </div>
+      <p class="note" id="pdf-status" style="margin-top:10px"></p>
+    </div>
+
+    <div>
+      <div class="paper" id="paper">
+        <div class="p-top">
+          <img class="p-logo" id="p-logo" alt="">
+          <div class="p-doc">
+            <b id="p-kind">RECEIPT</b>
+            <div id="p-no"></div>
+            <div id="p-date"></div>
+          </div>
+        </div>
+        <div class="p-biz" id="p-biz"></div>
+        <div class="p-client"><em id="p-client-label">Received from</em><span id="p-client"></span></div>
+        <table>
+          <thead><tr><th>Description</th><th class="num">Unit</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+          <tbody id="p-rows"></tbody>
+        </table>
+        <div class="p-total"><span>Total</span><span id="p-total">R0.00</span></div>
+        <span class="p-paid" id="p-paid">PAID</span>
+        <div class="p-notes" id="p-notes"></div>
+      </div>
+      <p class="note" style="margin-top:10px">Live preview — the PDF follows this layout.</p>
+    </div>
+  </div>
+
+  <footer class="site">Makhie — documents are generated on your device and never uploaded.</footer>
+</div>
+
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/vendor/qrcode.js"></script>
+<script src="../assets/makhie.js"></script>
+<script src="../assets/vendor/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var mode = "receipt", logoData = null, logoRatio = 1;
+
+  /* ---------- state helpers ---------- */
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function autoNo() {
+    var d = new Date(), p = (mode === "receipt" ? "RCP-" : "INV-");
+    return p + d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") +
+      "-" + String(Math.floor(100 + Math.random() * 900));
+  }
+  /* Money is accumulated in integer cents so floating-point drift can never
+     put a wrong cent on a document. */
+  function moneyC(cents) {
+    var c = ($("currency").value || "R").trim();
+    return c + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  }
+  function money(n) { return moneyC(Math.round(n * 100)); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function rows() {
+    return [].map.call($("rows").children, function (tr) {
+      return {
+        desc: tr.querySelector(".i-desc").value.trim(),
+        unit: num(tr.querySelector(".i-unit").value),
+        qty: num(tr.querySelector(".i-qty").value)
+      };
+    }).filter(function (r) { return r.desc || r.unit || r.qty; });
+  }
+  function lineC(r) { return Math.round(r.unit * 100 * r.qty); }
+  function total() { return rows().reduce(function (s, r) { return s + lineC(r); }, 0); }
+
+  /* ---------- item rows ---------- */
+  function addRow(desc, unit, qty) {
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td><input class='i-desc' placeholder='What was purchased' value=''></td>" +
+      "<td class='c-price'><input class='i-unit' type='number' min='0' step='0.01' placeholder='0.00'></td>" +
+      "<td class='c-qty'><input class='i-qty' type='number' min='0' step='1' placeholder='1'></td>" +
+      "<td class='c-line'></td>" +
+      "<td class='c-x'><button type='button' title='Remove line' aria-label='Remove line'>✕</button></td>";
+    tr.querySelector(".i-desc").value = desc || "";
+    if (unit != null) tr.querySelector(".i-unit").value = unit;
+    if (qty != null) tr.querySelector(".i-qty").value = qty;
+    tr.querySelector(".c-x button").addEventListener("click", function () { tr.remove(); refresh(); });
+    tr.addEventListener("input", refresh);
+    $("rows").appendChild(tr);
+  }
+  $("add-row").addEventListener("click", function () { addRow(); refresh(); });
+
+  /* ---------- logo ---------- */
+  $("logo-pick").addEventListener("click", function () { $("logo-file").click(); });
+  $("logo-file").addEventListener("change", function () {
+    var f = $("logo-file").files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      // Re-draw onto a canvas so any format (webp, etc.) becomes clean PNG for the PDF.
+      var img = new Image();
+      img.onerror = function () {
+        $("pdf-status").textContent = "That file couldn't be read as an image — try a PNG or JPG.";
+        $("pdf-status").className = "note hint-err";
+      };
+      img.onload = function () {
+        var cv = document.createElement("canvas");
+        var scale = Math.min(1, 600 / img.width);
+        cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        logoData = cv.toDataURL("image/png");
+        logoRatio = cv.width / cv.height;
+        $("logo-thumb").src = logoData; $("logo-thumb").style.display = "block";
+        $("logo-clear").style.display = "inline-block";
+        refresh();
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(f);
+  });
+  $("logo-clear").addEventListener("click", function () {
+    logoData = null; $("logo-file").value = "";
+    $("logo-thumb").style.display = "none"; $("logo-clear").style.display = "none";
+    refresh();
+  });
+
+  /* ---------- mode toggle ---------- */
+  function setMode(m) {
+    mode = m;
+    $("mode-receipt").classList.toggle("on", m === "receipt");
+    $("mode-invoice").classList.toggle("on", m === "invoice");
+    $("docno").value = autoNo();
+    refresh();
+  }
+  $("mode-receipt").addEventListener("click", function () { setMode("receipt"); });
+  $("mode-invoice").addEventListener("click", function () { setMode("invoice"); });
+
+  /* ---------- live preview ---------- */
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+  function refresh() {
+    var isR = mode === "receipt";
+    $("p-kind").textContent = isR ? "RECEIPT" : "INVOICE";
+    $("p-no").textContent = $("docno").value;
+    $("p-date").textContent = $("docdate").value;
+    $("p-biz").innerHTML = esc($("biz").value || "Your business") +
+      ($("biz2").value ? "<small>" + esc($("biz2").value) + "</small>" : "");
+    $("p-client-label").textContent = isR ? "Received from" : "Billed to";
+    $("p-client").textContent = $("client").value || "—";
+    $("p-paid").style.display = isR ? "inline-block" : "none";
+    if (logoData) { $("p-logo").src = logoData; $("p-logo").style.display = "block"; }
+    else $("p-logo").style.display = "none";
+    var rs = rows();
+    $("p-rows").innerHTML = rs.length
+      ? rs.map(function (r) {
+          return "<tr><td>" + esc(r.desc || "—") + "</td><td class='num'>" + money(r.unit) +
+            "</td><td class='num'>" + r.qty + "</td><td class='num'>" + moneyC(lineC(r)) + "</td></tr>";
+        }).join("")
+      : "<tr><td colspan='4' style='color:var(--mute)'>No items yet</td></tr>";
+    $("p-total").textContent = moneyC(total());
+    $("total-side").textContent = moneyC(total());
+    $("p-notes").textContent = $("notes").value;
+    [].forEach.call(document.querySelectorAll("#rows tr"), function (tr) {
+      var u = num(tr.querySelector(".i-unit").value), q = num(tr.querySelector(".i-qty").value);
+      tr.querySelector(".c-line").textContent = (u && q) ? moneyC(lineC({ unit: u, qty: q })) : "";
+    });
+  }
+  ["biz", "biz2", "client", "docno", "docdate", "currency", "notes"].forEach(function (id) {
+    $(id).addEventListener("input", refresh);
+  });
+
+  /* ---------- PDF ---------- */
+  function buildPdf() {
+    var doc = new jspdf.jsPDF({ unit: "mm", format: "a4" });
+    var W = 210, M = 18, y = 20;
+    var isR = mode === "receipt";
+    var INK = [27, 39, 64], MUTE = [92, 106, 133], LINE = [223, 230, 242], OK = [13, 122, 85];
+
+    if (logoData) {
+      var lh = 16, lw = Math.min(60, lh * logoRatio);
+      if (lw === 60) lh = lw / logoRatio;
+      doc.addImage(logoData, "PNG", M, y - 6, lw, lh);
+    }
+    doc.setFont("helvetica", "bold").setFontSize(20).setTextColor(INK[0], INK[1], INK[2]);
+    doc.text(isR ? "RECEIPT" : "INVOICE", W - M, y, { align: "right" });
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+    doc.text($("docno").value, W - M, y + 6, { align: "right" });
+    doc.text($("docdate").value, W - M, y + 11, { align: "right" });
+
+    y += 24;
+    doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(INK[0], INK[1], INK[2]);
+    doc.text($("biz").value || "Your business", M, y);
+    if ($("biz2").value) {
+      y += 5;
+      doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+      doc.text($("biz2").value, M, y);
+    }
+    y += 10;
+    doc.setFontSize(8).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+    doc.text((isR ? "RECEIVED FROM" : "BILLED TO"), M, y);
+    y += 5;
+    doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(INK[0], INK[1], INK[2]);
+    doc.text($("client").value || "—", M, y);
+
+    // table head
+    y += 12;
+    doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+    var cDesc = M, cUnit = 128, cQty = 152, cAmt = W - M;
+    doc.text("DESCRIPTION", cDesc, y); doc.text("UNIT", cUnit, y, { align: "right" });
+    doc.text("QTY", cQty, y, { align: "right" }); doc.text("AMOUNT", cAmt, y, { align: "right" });
+    y += 2; doc.setDrawColor(INK[0], INK[1], INK[2]).setLineWidth(0.5); doc.line(M, y, W - M, y);
+
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(INK[0], INK[1], INK[2]);
+    rows().forEach(function (r) {
+      var lines = doc.splitTextToSize(r.desc || "—", 100);
+      y += 7;
+      if (y > 262) { doc.addPage(); y = 24; }
+      doc.text(lines, cDesc, y);
+      doc.text(money(r.unit), cUnit, y, { align: "right" });
+      doc.text(String(r.qty), cQty, y, { align: "right" });
+      doc.text(moneyC(lineC(r)), cAmt, y, { align: "right" });
+      y += (lines.length - 1) * 5 + 2;
+      doc.setDrawColor(LINE[0], LINE[1], LINE[2]).setLineWidth(0.2); doc.line(M, y, W - M, y);
+    });
+
+    y += 10;
+    if (y > 258) { doc.addPage(); y = 24; }
+    doc.setFont("helvetica", "bold").setFontSize(13);
+    doc.text("Total", cQty - 18, y, { align: "right" });
+    doc.text(moneyC(total()), cAmt, y, { align: "right" });
+
+    if (isR) {
+      y += 12;
+      doc.setFontSize(11).setTextColor(OK[0], OK[1], OK[2]).setDrawColor(OK[0], OK[1], OK[2]).setLineWidth(0.6);
+      doc.roundedRect(M, y - 5.5, 24, 8.5, 1.5, 1.5);
+      doc.text("PAID", M + 12, y, { align: "center" });
+    }
+    if ($("notes").value) {
+      y += 14;
+      doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+      doc.text(doc.splitTextToSize($("notes").value, W - 2 * M), M, y);
+    }
+    doc.setFontSize(8).setTextColor(MUTE[0], MUTE[1], MUTE[2]);
+    doc.text("Generated with Makhie", M, 287);
+    return doc;
+  }
+  function fileName() { return (mode === "receipt" ? "receipt-" : "invoice-") + ($("docno").value || "document") + ".pdf"; }
+  $("dl-pdf").addEventListener("click", function () {
+    if (!rows().length) { $("pdf-status").textContent = "Add at least one item first."; $("pdf-status").className = "note hint-err"; return; }
+    buildPdf().save(fileName());
+    $("pdf-status").textContent = "Saved " + fileName() + " ✓ — ready to send anywhere.";
+    $("pdf-status").className = "note hint-ok";
+    if (window.MK) MK.saveDoc(mode, ($("client").value.trim() || "—") + " — " + $("docno").value, total(), {
+      client: $("client").value, number: $("docno").value, items: rows()
+    }).then(function () {
+      $("pdf-status").textContent += " Recorded for your dashboard.";
+    }).catch(function () {});
+  });
+  $("wa-pdf").addEventListener("click", function () {
+    if (!rows().length) { $("pdf-status").textContent = "Add at least one item first."; $("pdf-status").className = "note hint-err"; return; }
+    var doc = buildPdf();
+    MK.sharePdf(doc.output("blob"), fileName(),
+      "Here is your " + (mode === "receipt" ? "receipt" : "invoice") + " " + $("docno").value + " - total " + moneyC(total()) + ".");
+  });
+  if (navigator.share && navigator.canShare) {
+    $("share").style.display = "inline-block";
+    $("share").addEventListener("click", function () {
+      var blob = buildPdf().output("blob");
+      var f = new File([blob], fileName(), { type: "application/pdf" });
+      if (navigator.canShare({ files: [f] })) {
+        navigator.share({ files: [f], title: fileName() }).catch(function (e) {
+          if (e && e.name !== "AbortError") { $("pdf-status").textContent = "Sharing failed — use Download instead."; }
+        });
+      } else { $("pdf-status").textContent = "Sharing isn't available here — use Download instead."; }
+    });
+  }
+
+  /* ---------- boot ---------- */
+  $("docdate").value = today();
+  $("docno").value = autoNo();
+  addRow(); addRow();
+  refresh();
+})();
+</script>
+</body>
+</html>
