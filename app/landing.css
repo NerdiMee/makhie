@@ -134,3 +134,21 @@
   @media (prefers-reduced-motion: reduce) {
     #splash img, #splash .full { animation: none; opacity: 1; transform: none; }
   }
+
+/* ---- "what do you need solutions for" need-picker ---- */
+.needs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
+@media (max-width: 860px) { .needs-grid { grid-template-columns: repeat(2, 1fr); } }
+.need-card {
+  text-align: left; cursor: pointer; padding: 18px 18px 16px; border-radius: 16px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow); transition: transform 0.22s var(--ease, ease), box-shadow 0.22s, border-color 0.22s;
+  display: grid; gap: 5px; font: inherit; color: var(--ink);
+}
+@supports (backdrop-filter: blur(4px)) {
+  .need-card { backdrop-filter: blur(14px) saturate(1.5); -webkit-backdrop-filter: blur(14px) saturate(1.5); }
+}
+.need-card b { font-size: 15px; letter-spacing: -0.01em; }
+.need-card span { font-size: 12.5px; color: var(--mute); line-height: 1.45; }
+.need-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: var(--shadow-lift, 0 14px 40px -12px rgba(27, 39, 64, 0.35)); }
+.need-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .need-card, .need-card:hover { transition: none; transform: none; } }

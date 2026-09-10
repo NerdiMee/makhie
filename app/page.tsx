@@ -18,6 +18,17 @@ declare global {
   }
 }
 
+/* Need → search seed. Each seed is a word the tool tags already answer, so
+   picking a need simply drives the same search everyone can type. */
+const NEEDS: [string, string, string][] = [
+  ["Getting paid", "Payment requests your clients can scan", "paid"],
+  ["Tracking the money", "Money in, money out, what's left", "money"],
+  ["Deals in writing", "Turn a WhatsApp deal into a paper", "agreement"],
+  ["Signatures & proof", "Sign it, verify it, keep evidence", "sign"],
+  ["Bookings & clients", "Your calendar, their phone", "bookings"],
+  ["Winning new work", "Pitch yourself and get answers", "pitch"],
+];
+
 const CATS = [
   ["all", "All"],
   ["management", "Management"],
@@ -125,6 +136,30 @@ export default function Landing() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="hero-logo" src="/assets/logo.png" alt="Makhie" />
           <p className="hero-full">Market Access, Knowledge &amp; Help</p>
+        </section>
+
+        <section className="block" id="needs">
+          <div className="centered">
+            <div className="kicker">Start here</div>
+            <h2 className="sect">What does your informal business need solutions for?</h2>
+          </div>
+          <div className="needs-grid">
+            {NEEDS.map(([label, hint, seed]) => (
+              <button
+                key={seed}
+                type="button"
+                className="need-card"
+                onClick={() => {
+                  setCat("all");
+                  setQuery(seed);
+                  document.getElementById("tools")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                <b>{label}</b>
+                <span>{hint}</span>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="block" id="tools">
