@@ -6,7 +6,7 @@
 
 <p align="center">
   Free financial and business tools for the kasi economy.<br>
-  <a href="https://makhie.vercel.app"><strong>makhie.vercel.app</strong></a>
+  <a href="https://makhie.nerdimee.io"><strong>makhie.nerdimee.io</strong></a>
 </p>
 
 ---
