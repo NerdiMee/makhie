@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="/assets/vendor/supabase.js" strategy="beforeInteractive" />
         <Script src="/assets/vendor/qrcode.js" strategy="beforeInteractive" />
         <Script src="/assets/makhie.js" strategy="afterInteractive" />
+        <script src="https://nerdimee.io/t.js" data-skip="/apps" defer />
       </body>
     </html>
   );
