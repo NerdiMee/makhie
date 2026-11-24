@@ -21,10 +21,7 @@
 
   var authCbs = [], currentUser = null, authKnown = false;
 
-  var seenId = null;
   function setUser(u) {
-    // Record the account as a Makhie member once per page (auth.users is shared with other apps).
-    if (u && !u.demo && sb && seenId !== u.id) { seenId = u.id; sb.rpc("makhie_member_seen").then(null, function () {}); }
     currentUser = u; authKnown = true;
     authCbs.forEach(function (cb) { try { cb(u); } catch (e) {} });
   }
