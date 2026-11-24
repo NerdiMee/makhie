@@ -1,8 +1,8 @@
 /* Makhie shared platform layer.
    One tiny global (MK): Supabase client, sign-in state, record saving with an
    offline/local fallback, and the helpers every tool shares (money, PDFs,
-   signature pads, QR codes, downloads). Every tool needs an account (gate());
-   only pages a customer opens from someone's link stay open. */
+   signature pads, QR codes, downloads). Tools must keep working logged out —
+   signing in only adds persistence and the dashboard. */
 (function () {
   "use strict";
 
@@ -305,28 +305,8 @@
     return /\/apps\//.test(location.pathname) ? page : "apps/" + page;
   }
 
-  // Tool pages need a Makhie account. Open: pages a customer reaches from a link
-  // (signing, verifying, a business's booking page) and the admin room (own code).
-  function needsGate() {
-    var m = location.pathname.match(/\/apps\/([a-z0-9-]+)(\.html)?$/i);
-    if (!m) return false;
-    var page = m[1].toLowerCase();
-    if (page === "sign" || page === "verify" || page === "control") return false;
-    if (page === "bookings" && /[?&]b=/.test(location.search)) return false;
-    return true;
-  }
-  function gate() {
-    if (!needsGate()) return;
-    onAuth(function (u) {
-      if (u) return;
-      openAuthModal(true);
-      Array.prototype.forEach.call(document.body.children, function (el) { if (el !== modal && !el.classList.contains("consent")) el.inert = true; });
-    });
-  }
-
-  var modal, locked = false;
-  function openAuthModal(lock) {
-    if (lock) locked = true;
+  var modal;
+  function openAuthModal() {
     if (!modal) {
       modal = document.createElement("div");
       modal.className = "mk-overlay";
@@ -345,13 +325,8 @@
       document.body.appendChild(modal);
       var creating = false;
       var hint = modal.querySelector("#mk-hint");
-      modal.addEventListener("click", function (e) { if (e.target === modal && !locked) modal.classList.remove("open"); });
-      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !locked) modal.classList.remove("open"); });
-      if (locked) {
-        modal.querySelector("#mk-auth-title").textContent = "Sign in to use Makhie";
-        modal.querySelector(".note").textContent = "Every Makhie tool is free with an account. Sign in or create one to carry on.";
-        modal.querySelector("#mk-hint").insertAdjacentHTML("afterend", "<p class='note' style='text-align:center'><a href='/'>Back to Makhie</a></p>");
-      }
+      modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.remove("open"); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") modal.classList.remove("open"); });
       modal.querySelector("#mk-mode").addEventListener("click", function (e) {
         e.preventDefault(); creating = !creating;
         modal.querySelector("#mk-auth-title").textContent = creating ? "Create your Makhie account" : "Sign in to Makhie";
@@ -868,7 +843,6 @@
 
   function bootDom() {
     mountAuth(document.querySelector("header.site .nav"));
-    gate();
     mountCalc();
     mountAi();
     maybeNudge();
